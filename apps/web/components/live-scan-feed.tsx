@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/icon';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/status-badge';
 import {
   Target01Icon, AiBrain01Icon, JusticeScale01Icon, Bug01Icon, CheckmarkCircle02Icon,
-  Settings02Icon, SourceCodeIcon,
+  Settings02Icon, SourceCodeIcon, Cancel01Icon,
 } from '@hugeicons/core-free-icons';
 import { SCAN_STATUS_LABEL } from '@/lib/format';
 
@@ -110,7 +111,23 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
         <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
           <span className={`size-2 rounded-full ${done ? 'bg-muted-foreground' : 'animate-pulse bg-[var(--success)]'}`} />
           <span className="text-[12px] font-medium">{done ? 'Scan finished' : 'Live — attacking on a throwaway fork'}</span>
-          <div className="ml-auto"><StatusBadge hue={done ? 'neutral' : 'info'} size="sm">{SCAN_STATUS_LABEL[status] ?? status}</StatusBadge></div>
+          <div className="ml-auto flex items-center gap-2">
+          {!done ? (
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={async () => {
+                await fetch(`/api/scans/${scanId}/cancel`, { method: 'POST' }).catch(() => {});
+                setStatus('cancelled');
+                setDone(true);
+                setTimeout(() => router.refresh(), 400);
+              }}
+            >
+              <Icon icon={Cancel01Icon} size={13} /> Cancel
+            </Button>
+          ) : null}
+          <StatusBadge hue={done ? 'neutral' : 'info'} size="sm">{SCAN_STATUS_LABEL[status] ?? status}</StatusBadge>
+        </div>
         </div>
         <div className="max-h-80 overflow-y-auto p-2 font-mono text-[12px]">
           {events.length === 0 ? (
