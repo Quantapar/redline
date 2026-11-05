@@ -28,6 +28,17 @@ pnpm --filter @redline/web dev        # dashboard on http://localhost:3000
 pnpm --filter @redline/worker start   # scan worker (BullMQ)
 ```
 
+## Web app env (apps/web/.env.local)
+The Next.js app reads its own `.env.local` (gitignored). It needs:
+```
+KOBRA_TOKEN=...            # UI component registry
+DATABASE_URL=...           # same Postgres as the worker
+REDIS_URL=redis://localhost:6379
+OG_ROUTER_API_KEY=...      # for the Fix-it flow and the live demo scan
+ENCRYPTION_KEY=...         # 32-byte base64; encrypts saved attacks at rest
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
 ## Keys (.env)
 - `OG_ROUTER_API_KEY` — the model router. Blank → the model layer uses fixtures.
 - `ARCHIVE_RPC_URL` — archive RPC for forking a chain at a block.
