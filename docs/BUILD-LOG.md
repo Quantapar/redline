@@ -189,3 +189,13 @@ Addressed all 10 findings from the independent review subagent:
   derived when not provided). A GitHub-triggered scan now actually hunts the changed code.
 - Added ChangedTarget.source to the shared schema. 4 gitPrepare tests.
 - Totals: 90 tests across 9 packages, all green; all typechecks clean.
+
+## 2026-11-06 — checkpoint summary
+Complete end-to-end and pushed to Quantapar/redline (private). 9 packages, ~90 tests all green,
+all typechecks clean, production build passes, no secrets tracked, no AI-assistant mentions.
+Live-verified: swarm hunts real contracts via 0G, fixer returns correct diffs, live scan room
+streams over SSE, full queue→worker→Postgres path. Independent review done + all 10 findings fixed.
+Rate-limited paid endpoints. GitHub-App path fetches sources and hunts the changed code.
+
+Outstanding (user-blocked, all with fallbacks): GitHub App registration secrets, Foundry install,
+flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.md.
