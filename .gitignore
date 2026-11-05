@@ -21,3 +21,5 @@ test-results/
 # registry auth
 .npmrc
 **/.npmrc
+!.env.local.example
+!**/.env.local.example
