@@ -265,3 +265,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - LocalSandbox tests: stdout/stderr capture, exit codes, timeout flag, env pass-through (5 tests).
 - "Copy public proof" button on the finding page (fetches the votes-and-receipts JSON).
 - Totals: 121 tests across 10 packages, all green.
+
+## 2026-11-06 — scan cancellation
+- cancelScan marks a scan cancelled and drops its queued job if it has not started; refuses to
+  cancel a complete/failed scan. POST /api/scans/[id]/cancel. 3 tests.
+- Totals: 127 tests across 10 packages, all green.
