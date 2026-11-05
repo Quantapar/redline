@@ -21,11 +21,19 @@ interface RepoMeta {
  * opens an in-progress check, queues a scan, and (on completion) turns the check
  * red with a link to the proof. Registration details are in docs/GITHUB_APP.md.
  */
-export function redlineApp(app: Probot): void {
-  const { db } = createDb();
-  const queue = createScanQueue();
+export interface RedlineAppDeps {
+  db?: ReturnType<typeof createDb>['db'];
+  queue?: ReturnType<typeof createScanQueue>;
+  /** skip the Redis QueueEvents completion listener (tests) */
+  skipCompletion?: boolean;
+}
+
+export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
+  const db = deps.db ?? createDb().db;
+  const queue = deps.queue ?? createScanQueue();
 
   // When a scan completes (in the separate worker process), resolve its check.
+  if (!deps.skipCompletion) {
   const events = new QueueEvents(SCAN_QUEUE, { connection: createRedis() });
   events.on('completed', async ({ jobId }: { jobId: string }) => {
     try {
@@ -47,6 +55,7 @@ export function redlineApp(app: Probot): void {
       app.log.error(`[redline] failed to resolve check: ${String(err)}`);
     }
   });
+  }
 
   async function upsertRepo(meta: RepoMeta, installationId: number): Promise<string> {
     const [account] = await db

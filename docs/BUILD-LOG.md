@@ -350,3 +350,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 9. LOW XFF-spoofable/in-memory rate limit: documented; the admin guard mitigates the worst case.
 10. LOW SSE heartbeat leak: cleared on cancel and done.
 - Totals: 163 tests, all green; production build passes.
+
+## 2026-11-06 — GitHub App handler coverage
+- redlineApp now accepts injectable deps (db, queue, skipCompletion) for testing. A mocked-Probot
+  test exercises the pull_request handler end to end: a changed contract creates a scan, captures
+  its source, stores the check-run id, and enqueues; no contract change -> no scan. 2 tests.
+- Added uuid-validator and admin-guard tests; an encryption-at-rest pipeline test.
+- Totals: 171 tests across 10 packages, all green.
