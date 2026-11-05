@@ -298,3 +298,9 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   because Card defaults to flex-col; forced flex-row).
 - Added coverage: domain schema validation, swarm roster tiering, parseSlitherJson.
 - Totals: 154 tests across 10 packages, all green.
+
+## 2026-11-06 — triage E2E verified in-browser
+- Resolved a finding from the finding page: status flipped to Resolved with a Reopen action, and
+  the dashboard's open-alarms section dropped it (3 -> 2). CLI dispatch now covered (6 tests),
+  recipes empty state added. Production build passes.
+- Totals: 160 tests across 10 packages, all green.
