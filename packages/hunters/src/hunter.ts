@@ -44,6 +44,7 @@ export function parseCandidates(
       id: newId(),
       scanId,
       hunterModel: resp.model,
+      modelReceipt: resp.receipt,
       weaknessClass: wc.success ? wc.data : 'other',
       targetContract,
       targetFunction: r.targetFunction ?? null,

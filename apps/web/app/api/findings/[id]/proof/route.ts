@@ -15,6 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const [finding] = await d.select().from(schema.findings).where(eq(schema.findings.id, id)).limit(1);
   if (!finding) return NextResponse.json({ error: 'finding not found' }, { status: 404 });
   const runs = await d.select().from(schema.refereeRuns).where(eq(schema.refereeRuns.candidateId, finding.candidateId));
+  const [candidate] = await d.select().from(schema.candidates).where(eq(schema.candidates.id, finding.candidateId)).limit(1);
 
   return NextResponse.json({
     finding: {
@@ -36,6 +37,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       deltas: r.deltas,
       receipt: r.traceRef,
     })),
+    discovery: candidate ? { hunterModel: candidate.hunterModel, modelReceipt: candidate.modelReceipt } : null,
     verifiable: 'Re-run each referee independently and confirm the balance deltas. No code is trusted.',
   });
 }

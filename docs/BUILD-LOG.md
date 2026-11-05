@@ -270,3 +270,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - cancelScan marks a scan cancelled and drops its queued job if it has not started; refuses to
   cancel a complete/failed scan. POST /api/scans/[id]/cancel. 3 tests.
 - Totals: 127 tests across 10 packages, all green.
+
+## 2026-11-06 — model receipt in the audit trail
+- candidates.model_receipt stores the provider receipt proving which model found a candidate
+  (the 0G receipt). The hunt captures it, the pipeline persists it, and the public proof includes
+  it as the discovery provenance.

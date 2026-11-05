@@ -18,6 +18,7 @@ export const Candidate = z.object({
   id: z.string(),
   scanId: z.string(),
   hunterModel: z.string(),         // which model proposed it (from the swarm)
+  modelReceipt: z.string().nullable().optional(), // provider receipt proving which model ran
   weaknessClass: WeaknessClass,
   targetContract: z.string(),
   targetFunction: z.string().nullable(),

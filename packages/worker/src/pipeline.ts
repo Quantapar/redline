@@ -80,6 +80,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
     const row = await insertCandidate(db, {
       scanId,
       hunterModel: c.hunterModel,
+      modelReceipt: c.modelReceipt ?? null,
       weaknessClass: c.weaknessClass,
       targetContract: c.targetContract,
       contractSource: sourceByContract.get(c.targetContract) ?? null,

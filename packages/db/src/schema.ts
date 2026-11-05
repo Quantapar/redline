@@ -67,6 +67,7 @@ export const candidates = pgTable('candidates', {
   id: uuid('id').defaultRandom().primaryKey(),
   scanId: uuid('scan_id').notNull().references(() => scans.id, { onDelete: 'cascade' }),
   hunterModel: text('hunter_model').notNull(),
+  modelReceipt: text('model_receipt'),
   weaknessClass: text('weakness_class').notNull(),
   targetContract: text('target_contract').notNull(),
   contractSource: text('contract_source'),
