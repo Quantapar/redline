@@ -25,6 +25,7 @@ if (!g.ResizeObserver) {
 
 const proto = Element.prototype as unknown as Record<string, unknown>;
 // jsdom lacks the Web Animations API that spinners/animations call.
+if (!proto.scrollIntoView) proto.scrollIntoView = () => {};
 if (!proto.getAnimations) proto.getAnimations = () => [];
 if (!proto.animate) {
   proto.animate = () => ({
