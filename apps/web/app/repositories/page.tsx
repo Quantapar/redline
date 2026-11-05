@@ -29,7 +29,7 @@ export default async function RepositoriesPage() {
       ) : (
       <div className="grid gap-3">
         {repos.map((r) => (
-          <Card key={r.id} className="flex items-center gap-4 p-4">
+          <Card key={r.id} className="flex flex-row items-center gap-4 p-4">
             <div className="flex size-9 items-center justify-center rounded-lg border border-border bg-muted/50">
               <Icon icon={GitBranchIcon} size={17} />
             </div>

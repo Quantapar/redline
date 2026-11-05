@@ -50,7 +50,7 @@ export default async function GoingLivePage() {
 
       <div className="grid gap-3">
         {rows.map(({ repo, decision, sha }) => (
-          <Card key={repo.id} className="flex items-center gap-4 p-4">
+          <Card key={repo.id} className="flex flex-row items-center gap-4 p-4">
             <div className="flex size-9 items-center justify-center rounded-lg border border-border bg-muted/50">
               <Icon icon={GitBranchIcon} size={17} />
             </div>
