@@ -318,3 +318,9 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Below md the sidebar was hidden with no menu, so mobile users could not navigate. Added a menu
   button that opens a Sheet drawer with the same nav, closing on selection. The desktop sidebar is
   unchanged. (The in-tool browser renders a fixed viewport, so verify the drawer on a real phone.)
+
+## 2026-11-06 — enforceable deploy gate
+- GET /api/deploy-check?repo=&version= returns the going-live decision (blocks a red or unchecked
+  version). `redline verify-deploy --repo --version` calls it and exits non-zero when blocked, so a
+  deploy script can refuse to publish an unchecked or red version. Live-verified: a red version is
+  blocked with exit 2.

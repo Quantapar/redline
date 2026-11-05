@@ -44,6 +44,8 @@ Usage:
 
   redline scan <dir>         hunt + council over a local Solidity project
                              [--budget <cents>] [--sim]
+  redline verify-deploy      gate a deploy on the council's verdict for a version
+                             --repo <owner/repo> --version <sha> [--url <app url>]
 
 Your security policy is plain English. Redline reads it on every scan and flags
 anything that breaks it. No coding required.`;
@@ -54,6 +56,27 @@ export async function main(argv: string[]): Promise<number> {
     console.log(HELP);
     return 0;
   }
+  if (group === 'verify-deploy') {
+    const { flags } = parseFlags([cmd ?? '', ...rest].filter(Boolean));
+    const repo = flags.repo;
+    const version = flags.version;
+    if (!repo || !version) { console.error('usage: redline verify-deploy --repo <owner/repo> --version <sha>'); return 1; }
+    const base = (flags.url ?? process.env.REDLINE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+    try {
+      const res = await fetch(`${base}/api/deploy-check?repo=${encodeURIComponent(repo)}&version=${encodeURIComponent(version)}`);
+      const data = await res.json() as { allowed: boolean; reason: string };
+      if (data.allowed) {
+        console.log(`\u2713 deploy allowed: ${data.reason}`);
+        return 0;
+      }
+      console.error(`\u2717 deploy blocked: ${data.reason}`);
+      return 2;
+    } catch (err) {
+      console.error(`could not reach Redline at ${base}: ${(err as Error).message}`);
+      return 1;
+    }
+  }
+
   if (group === 'scan') {
     const { positional, flags } = parseFlags([cmd ?? '', ...rest].filter(Boolean));
     const dir = positional[0] ?? '.';
