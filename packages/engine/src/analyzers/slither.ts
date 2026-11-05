@@ -25,32 +25,37 @@ export async function runSlither(projectDir: string): Promise<AnalyzerResult> {
       timeout: 120_000,
       maxBuffer: 64 * 1024 * 1024,
     }).catch((e: { stdout?: string }) => ({ stdout: e.stdout ?? '' }));
-    const hits: AnalyzerHit[] = [];
-    try {
-      const parsed = JSON.parse(stdout) as {
-        results?: { detectors?: Array<Record<string, unknown>> };
-      };
-      for (const d of parsed.results?.detectors ?? []) {
-        const check = String(d.check ?? '');
-        const els = (d.elements as Array<Record<string, unknown>>) ?? [];
-        const first = els[0] ?? {};
-        const sm = (first.source_mapping as { lines?: number[]; filename_relative?: string }) ?? {};
-        hits.push({
-          tool: 'slither',
-          weaknessClass: SLITHER_TO_CLASS[check] ?? 'other',
-          contract: String((first.type_specific_fields as { parent?: { name?: string } })?.parent?.name ?? first.name ?? 'unknown'),
-          functionName: first.type === 'function' ? String(first.name ?? '') : null,
-          file: sm.filename_relative ?? '',
-          line: sm.lines?.[0] ?? null,
-          confidence: (String(d.confidence ?? 'medium').toLowerCase() as 'high' | 'medium' | 'low'),
-          note: String(d.description ?? check).slice(0, 280),
-        });
-      }
-    } catch {
-      /* non-json or empty */
-    }
+    const hits = parseSlitherJson(stdout);
     return { tool: 'slither', available: true, hits, raw: stdout.slice(0, 20_000) };
   } catch {
     return { tool: 'slither', available: false, hits: [], raw: '' };
   }
+}
+
+/** Parse Slither's --json output into focus hits. Pure and testable. */
+export function parseSlitherJson(stdout: string): AnalyzerHit[] {
+  const hits: AnalyzerHit[] = [];
+  let parsed: { results?: { detectors?: Array<Record<string, unknown>> } };
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    return hits;
+  }
+  for (const d of parsed.results?.detectors ?? []) {
+    const check = String(d.check ?? '');
+    const els = (d.elements as Array<Record<string, unknown>>) ?? [];
+    const first = els[0] ?? {};
+    const sm = (first.source_mapping as { lines?: number[]; filename_relative?: string }) ?? {};
+    hits.push({
+      tool: 'slither',
+      weaknessClass: SLITHER_TO_CLASS[check] ?? 'other',
+      contract: String((first.type_specific_fields as { parent?: { name?: string } })?.parent?.name ?? first.name ?? 'unknown'),
+      functionName: first.type === 'function' ? String(first.name ?? '') : null,
+      file: sm.filename_relative ?? '',
+      line: sm.lines?.[0] ?? null,
+      confidence: String(d.confidence ?? 'medium').toLowerCase() as 'high' | 'medium' | 'low',
+      note: String(d.description ?? check).slice(0, 280),
+    });
+  }
+  return hits;
 }

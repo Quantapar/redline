@@ -30,3 +30,42 @@ describe('optional toolchain degrades gracefully', () => {
     }
   });
 });
+
+import { parseSlitherJson } from '../src/analyzers/slither.js';
+
+describe('parseSlitherJson', () => {
+  const sample = JSON.stringify({
+    results: {
+      detectors: [
+        {
+          check: 'reentrancy-eth',
+          confidence: 'High',
+          description: 'Reentrancy in EtherVault.withdraw()',
+          elements: [
+            { type: 'function', name: 'withdraw', type_specific_fields: { parent: { name: 'EtherVault' } }, source_mapping: { lines: [12], filename_relative: 'src/EtherVault.sol' } },
+          ],
+        },
+        { check: 'some-unknown-check', confidence: 'Medium', description: 'x', elements: [] },
+      ],
+    },
+  });
+
+  it('maps known checks to weakness classes with location', () => {
+    const hits = parseSlitherJson(sample);
+    expect(hits).toHaveLength(2);
+    expect(hits[0]!.weaknessClass).toBe('reentrancy');
+    expect(hits[0]!.contract).toBe('EtherVault');
+    expect(hits[0]!.functionName).toBe('withdraw');
+    expect(hits[0]!.line).toBe(12);
+    expect(hits[0]!.confidence).toBe('high');
+  });
+  it('falls back to "other" for unknown checks', () => {
+    expect(parseSlitherJson(sample)[1]!.weaknessClass).toBe('other');
+  });
+  it('returns empty on non-JSON', () => {
+    expect(parseSlitherJson('not json')).toEqual([]);
+  });
+  it('returns empty when there are no detectors', () => {
+    expect(parseSlitherJson(JSON.stringify({ results: {} }))).toEqual([]);
+  });
+});
