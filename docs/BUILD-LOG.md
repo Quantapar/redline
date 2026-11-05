@@ -173,3 +173,11 @@ Addressed all 10 findings from the independent review subagent:
 - Renamed the queue 'redline:scans' -> 'redline-scans' (BullMQ forbids ':' in queue names).
 - seedRepo uses unique ids; worker test files run sequentially (shared test DB).
 - Totals: 78 tests across 9 packages, all green. Repo pushed to Quantapar/redline (private).
+
+## 2026-11-06 — test hardening
+- Property tests (shared): ~14,000 randomized councils confirm red⟹reproduced+quorum+zero-dissent;
+  sybil providers never red; BudgetGuard never overruns over random charge sequences; attackerGained
+  monotonic in threshold.
+- Engine: Foundry-absent path returns build-failed → council inconclusive → never red (honest
+  no-proof-no-alarm).
+- Totals: 86 tests across 9 packages, all green.
