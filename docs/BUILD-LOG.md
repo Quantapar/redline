@@ -59,3 +59,25 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
 - Fixes: (1) some coder models reject response_format json_object -> client retries plain,
   parser already tolerant. (2) added 3x retry w/ quadratic backoff for connect timeouts/5xx/429
   (hit a transient UND_ERR_CONNECT_TIMEOUT once). (3) scripts must be .mts for ESM TLA.
+
+## 2026-11-06 — worker pipeline (backend spine complete)
+- @redline/db: data-access queries (createScan, setScanStatus, insert candidate/referee/
+  finding/regression, lists).
+- @redline/engine: FoundryRefereeEngine (real forge run; passing exploit test == money
+  moved; honest build-failed when foundry absent) + createRefereeEngine factory.
+- @redline/worker: events (live SSE feed shape), judge (panel: severity by class, policy
+  glob match, dup check — runs ONLY on reproduced, never creates/cancels red), pipeline
+  runScan (prepare->hunt->verify council->judge->persist), BullMQ queue + processor, prepare
+  stub (git clone TBD).
+- Integration test on LIVE Postgres (redline_test db): genuine exploit -> red finding +
+  saved regression test + 3 referee runs + scan complete; cheat-dependent -> no alarm;
+  empty swarm -> clean complete. 3 tests.
+- Fix: cheat-dependent fixture must actually contain a forbidden cheat for the stripper to
+  bite (engine was right; test fixture was wrong).
+- Totals: 51 tests across 5 packages, all typecheck clean.
+
+## Next
+- apps/web: Next.js dashboard (Kobra design system + hugeicons), live scan room (SSE),
+  findings pages, policy view. THE visual deliverable — no slop.
+- apps/github-app: Probot (webhooks, checks API, Fix-it PR).
+- packages/cli: redline policy. Then subagent review -> create private repo -> push.
