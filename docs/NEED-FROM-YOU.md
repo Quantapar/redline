@@ -66,3 +66,9 @@ Not for me to build, parking them here so we don't forget:
 - Full registration checklist is in docs/GITHUB_APP.md (5 min in GitHub's UI). It needs:
   App ID, a private key .pem, and a webhook secret — the three things only you can create.
 - Not blocking: everything else runs without it.
+
+## Update (repo + license)
+- Private repo created: github.com/Quantapar/redline (not pushed until the review clears).
+- Added MIT LICENSE (ETHGlobal usually requires an OSI license for public repos). Change the
+  license or the copyright holder line if you'd prefer something else.
+- Added a CI workflow (.github/workflows/ci.yml): Postgres + Redis services, typecheck + tests.
