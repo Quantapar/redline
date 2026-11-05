@@ -324,3 +324,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   version). `redline verify-deploy --repo --version` calls it and exits non-zero when blocked, so a
   deploy script can refuse to publish an unchecked or red version. Live-verified: a red version is
   blocked with exit 2.
+
+## 2026-11-06 — watch mode + deploy gate as APIs; analyzer parsers
+- POST /api/watch turns a new hack into a recipe and queues a re-scan of every repo (live-verified:
+  recipe added, 3 scans queued). GET /api/deploy-check + `redline verify-deploy` gate a deploy.
+- Extracted and tested parseSlitherJson and parseAderynJson.
+- NOTE: GitHub push endpoint returned a server-side "fatal error in commit_refs" for this repo for a
+  stretch; commits are safe locally and a background retry pushes them when it clears.
