@@ -4,6 +4,7 @@ import { getFindingDetail } from '@/lib/queries';
 import { CouncilPanel } from '@/components/council-panel';
 import { FixItButton } from '@/components/fix-it-button';
 import { FindingStatusControl } from '@/components/finding-status-control';
+import { PublicProofButton } from '@/components/public-proof-button';
 import { StatusBadge } from '@/components/status-badge';
 import { LockedAttack } from '@/components/locked-attack';
 import { redactAttack } from '@/lib/redact';
@@ -76,6 +77,9 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
           <div className="rounded-xl border border-border bg-card p-4">
             <FixItButton findingId={finding.id} />
             <p className="mt-2.5 text-center text-[11px] text-muted-foreground">Opens a reviewed PR with the fix and the forever-test.</p>
+            <div className="mt-2 border-t border-border pt-2">
+              <PublicProofButton findingId={finding.id} />
+            </div>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-3">

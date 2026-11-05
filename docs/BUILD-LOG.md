@@ -260,3 +260,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   the runnable attack. This is the publishable proof (the Arkiv public-proofs fit).
 - Live-verified: reproduced finding returns 3/3 agreement, 3 runs, zero attack code.
 - Slither install abandoned: Python 3.14 is too new for its toolchain (noted as external blocker).
+
+## 2026-11-06 — sandbox tests + public-proof UI
+- LocalSandbox tests: stdout/stderr capture, exit codes, timeout flag, env pass-through (5 tests).
+- "Copy public proof" button on the finding page (fetches the votes-and-receipts JSON).
+- Totals: 121 tests across 10 packages, all green.
