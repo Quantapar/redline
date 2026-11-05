@@ -4,6 +4,7 @@ import { ScanStatus, ScanTrigger } from './enums.js';
 export const ChangedTarget = z.object({
   file: z.string(),
   contract: z.string(),
+  source: z.string().optional(),
   changedFunctions: z.array(z.string()),
   /** functions connected to the change (callers/callees) that are also in scope */
   connectedFunctions: z.array(z.string()),

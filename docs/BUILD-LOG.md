@@ -181,3 +181,11 @@ Addressed all 10 findings from the independent review subagent:
 - Engine: Foundry-absent path returns build-failed → council inconclusive → never red (honest
   no-proof-no-alarm).
 - Totals: 86 tests across 9 packages, all green.
+
+## 2026-11-06 — GitHub App path made functional (review gap #6 follow-up)
+- The App now fetches each changed .sol file's content at the scanned commit (octokit
+  repos.getContent) and stores it on the scan's changedTargets.
+- gitPrepare builds real HuntTargets from those captured sources (contract name + functions
+  derived when not provided). A GitHub-triggered scan now actually hunts the changed code.
+- Added ChangedTarget.source to the shared schema. 4 gitPrepare tests.
+- Totals: 90 tests across 9 packages, all green; all typechecks clean.

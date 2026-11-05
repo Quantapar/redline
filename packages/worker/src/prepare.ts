@@ -1,13 +1,38 @@
 import type { PrepareResult } from './pipeline.js';
 import { DEFAULT_POLICY } from '@redline/shared';
 import type { schema } from '@redline/db';
+import type { HuntTarget } from '@redline/hunters';
+
+interface StoredTarget {
+  file: string;
+  contract?: string;
+  source?: string;
+  changedFunctions?: string[];
+}
 
 /**
- * Production prepare step: clone the repo at the commit, detect contracts and
- * test setup, diff against the base to find changed + connected targets, and run
- * Slither/Aderyn to collect focus hints. Stubbed here; wired to git in a later pass.
+ * Build hunt targets from the sources the GitHub App captured for the changed
+ * contracts. The App fetches each changed .sol file's content at the scanned
+ * commit and stores it on the scan, so the worker (in its own sealed sandbox)
+ * has exactly the code under review without cloning.
  */
-export async function gitPrepare(_scan: typeof schema.scans.$inferSelect): Promise<PrepareResult> {
-  // TODO: clone + detect + diff + static analysis. Until then, no targets.
-  return { targets: [], policy: DEFAULT_POLICY };
+export async function gitPrepare(scan: typeof schema.scans.$inferSelect): Promise<PrepareResult> {
+  const stored = (scan.changedTargets as StoredTarget[] | null) ?? [];
+  const targets: HuntTarget[] = [];
+  for (const t of stored) {
+    if (!t.source) continue; // no content captured -> nothing to attack
+    const contractName = t.contract || t.source.match(/contract\s+(\w+)/)?.[1] || 'Unknown';
+    targets.push({
+      contractName,
+      filePath: t.file,
+      source: t.source,
+      changedFunctions: t.changedFunctions && t.changedFunctions.length > 0
+        ? t.changedFunctions
+        : [...t.source.matchAll(/function\s+(\w+)/g)].map((m) => m[1]!).slice(0, 20),
+      analyzerNotes: [],
+    });
+  }
+  // Per-repo policy is applied by the pipeline's judge via the repository record;
+  // the hunt prompt uses the default here and is tightened once the policy is loaded.
+  return { targets, policy: DEFAULT_POLICY };
 }

@@ -67,6 +67,28 @@ export function redlineApp(app: Probot): void {
     return row!.id;
   }
 
+  async function fetchChangedTargets(
+    octokit: Context['octokit'],
+    repoRef: { owner: string; repo: string },
+    ref: string,
+    files: string[],
+  ) {
+    const targets: { file: string; contract: string; source: string; changedFunctions: string[]; connectedFunctions: string[] }[] = [];
+    for (const file of files) {
+      try {
+        const res = await octokit.repos.getContent({ ...repoRef, path: file, ref });
+        const data = res.data as { content?: string; encoding?: string };
+        if (!data.content) continue;
+        const source = Buffer.from(data.content, (data.encoding as BufferEncoding) ?? 'base64').toString('utf8');
+        const contract = source.match(/contract\s+(\w+)/)?.[1] ?? '';
+        targets.push({ file, contract, source, changedFunctions: [], connectedFunctions: [] });
+      } catch {
+        // file deleted or unreadable at this ref; skip it
+      }
+    }
+    return targets;
+  }
+
   async function run(
     octokit: Context['octokit'],
     repoRef: { owner: string; repo: string },
@@ -80,6 +102,7 @@ export function redlineApp(app: Probot): void {
 
     const repositoryId = await upsertRepo(meta, installationId);
 
+    const changedTargets = await fetchChangedTargets(octokit, repoRef, ev.headSha, decision.solidityFiles);
     const scan = await createScan(db, {
       repositoryId,
       trigger: decision.trigger,
@@ -87,7 +110,7 @@ export function redlineApp(app: Probot): void {
       baseSha: ev.baseSha,
       prNumber: ev.prNumber,
       isIncremental: decision.isIncremental,
-      changedTargets: decision.solidityFiles.map((f) => ({ file: f, contract: '', changedFunctions: [], connectedFunctions: [] })),
+      changedTargets,
     });
 
     const check = await octokit.checks.create({
