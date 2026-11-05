@@ -219,3 +219,9 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - The pipeline encrypts the saved attack (regression_tests.forge_test) at rest, so a stolen DB
   yields ciphertext, not runnable exploits. Verified: stored value is enc:v1:...
 - 5 crypto tests. Totals: 107 tests across 9 packages.
+
+## 2026-11-06 — watch mode
+- triggerWatchMode(db, {recipe, enqueue}): adds a new attack to the shared recipe library
+  (source: watch-mode) and queues a watch-mode scan of every enabled repo's latest version.
+  Enqueue is injected for testability. 2 tests.
+- Totals: 109 tests across 9 packages, all green.

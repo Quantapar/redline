@@ -5,3 +5,4 @@ export * from './queue.js';
 export * from './connection.js';
 export * from './processor.js';
 export * from './prepare.js';
+export * from './watch-mode.js';
