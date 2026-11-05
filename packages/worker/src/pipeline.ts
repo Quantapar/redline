@@ -25,10 +25,26 @@ export interface PipelineDeps {
   emit?: EmitFn;
 }
 
+// Each referee forks from a configured archive RPC. Set ARCHIVE_RPC_URLS to a
+// comma-separated list of independent providers for true independence; with one
+// URL the rooms share an upstream (distinct moments, same source).
+function forkUrls(): (string | undefined)[] {
+  const list = (process.env.ARCHIVE_RPC_URLS ?? process.env.ARCHIVE_RPC_URL ?? '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean);
+  return list.length ? list : [undefined];
+}
+
 const DEFAULT_COUNCIL_DISPATCH = {
   providers: ['room-a', 'room-b', 'room-c'],
   blocks: [0, 0, 0],
   thresholdWei: '1000000000000000', // 0.001 ETH
+  forkUrlFor: (provider: string) => {
+    const urls = forkUrls();
+    const idx = ['room-a', 'room-b', 'room-c'].indexOf(provider);
+    return urls[idx % urls.length] ?? urls[0];
+  },
 };
 
 export interface ScanResult {

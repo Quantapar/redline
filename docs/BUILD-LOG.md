@@ -280,3 +280,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Foundry referee helpers (parseNet, wrapTest) tested. Web pure utils (format, redact, referee-value)
   tested. Scan cancellation, model-receipt provenance, finding triage, public-proof export all added.
 - Totals: 140 tests across 10 packages, all green; production build passes.
+
+## 2026-11-06 — real-fork wiring
+- The council dispatch now resolves each referee's fork RPC from ARCHIVE_RPC_URLS (comma-separated
+  independent providers) or ARCHIVE_RPC_URL. The Foundry referee forks from these the moment Foundry
+  is installed; the simulation ignores them. Documented the multi-provider independence need.

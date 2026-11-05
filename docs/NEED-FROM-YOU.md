@@ -80,3 +80,9 @@ Not for me to build, parking them here so we don't forget:
 - Until then the engine runs on the deterministic simulation. A ready-to-run Foundry
   fixture (vulnerable vault + a real reentrancy PoC) is in fixtures/vault/ to validate
   the real fork path the moment Foundry is installed.
+
+## Update (referee independence)
+- For the REAL fork-based council (once Foundry is installed), referees should fork from
+  INDEPENDENT RPC providers. Set ARCHIVE_RPC_URLS to a comma-separated list (e.g. Alchemy, Infura,
+  Ankr). With a single provider the rooms share an upstream, which weakens the independence claim.
+  Right now only one Alchemy URL is configured.
