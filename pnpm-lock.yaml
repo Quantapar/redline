@@ -145,6 +145,12 @@ importers:
 
   packages/cli:
     dependencies:
+      '@redline/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@redline/hunters':
+        specifier: workspace:*
+        version: link:../hunters
       '@redline/shared':
         specifier: workspace:*
         version: link:../shared

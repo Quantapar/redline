@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { parsePolicy, serializePolicy, addRule, removeRule, STARTER_POLICY } from './policy.js';
+import { detectTargets, loadProjectPolicy, runLocalScan, isDir } from './scan.js';
 import type { Severity } from '@redline/shared';
 
 const POLICY_PATH = '.redline/policy.yml';
@@ -41,6 +42,9 @@ Usage:
   redline policy remove <id>
   redline policy init        create a starter ${POLICY_PATH}
 
+  redline scan <dir>         hunt + council over a local Solidity project
+                             [--budget <cents>] [--sim]
+
 Your security policy is plain English. Redline reads it on every scan and flags
 anything that breaks it. No coding required.`;
 
@@ -50,6 +54,39 @@ export async function main(argv: string[]): Promise<number> {
     console.log(HELP);
     return 0;
   }
+  if (group === 'scan') {
+    const { positional, flags } = parseFlags([cmd ?? '', ...rest].filter(Boolean));
+    const dir = positional[0] ?? '.';
+    if (!(await isDir(dir))) { console.error(`not a directory: ${dir}`); return 1; }
+    if (!process.env.OG_ROUTER_API_KEY) { console.error('set OG_ROUTER_API_KEY to run a scan.'); return 1; }
+    const targets = await detectTargets(dir);
+    if (targets.length === 0) { console.log('no Solidity contracts found.'); return 0; }
+    const policy = await loadProjectPolicy(dir);
+    console.log(`scanning ${targets.length} contract(s) in ${dir}...`);
+    try {
+      const report = await runLocalScan({
+        targets,
+        policy,
+        budgetCents: Number(flags.budget ?? 500),
+        forceSimulation: flags.sim === 'true',
+        onProgress: (m) => console.log(`  ${m}`),
+      });
+      console.log(`\n${report.candidateCount} candidate(s), ${report.red.length} reproduced (red). spent ~${report.spentCents}c.`);
+      for (const r of report.red) {
+        console.log(`  RED [${r.weaknessClass}] ${r.contract} — council ${r.agreement}`);
+        console.log(`      ${r.summary}`);
+      }
+      if (report.candidateCount > 0 && report.red.length === 0) {
+        console.log('\nNo theft was reproduced. Install Foundry (forge/anvil) for the real');
+        console.log('fork-based council — candidates are only proven by actually moving the money.');
+      }
+      return report.red.length > 0 ? 2 : 0;
+    } catch (err) {
+      console.error(`scan failed: ${(err as Error).message}`);
+      return 1;
+    }
+  }
+
   if (group !== 'policy') {
     console.error(`unknown command: ${group}\n`);
     console.log(HELP);
