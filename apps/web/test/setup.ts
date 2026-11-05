@@ -13,20 +13,28 @@ if (!window.matchMedia) {
     dispatchEvent: vi.fn(),
   }));
 }
-if (!window.ResizeObserver) {
-  // @ts-expect-error minimal stub
-  window.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+
+const g = globalThis as unknown as Record<string, unknown>;
+if (!g.ResizeObserver) {
+  g.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
 }
 
+const proto = Element.prototype as unknown as Record<string, unknown>;
 // jsdom lacks the Web Animations API that spinners/animations call.
-if (!Element.prototype.getAnimations) {
-  // @ts-expect-error minimal stub
-  Element.prototype.getAnimations = () => [];
-}
-if (!Element.prototype.animate) {
-  // @ts-expect-error minimal stub
-  Element.prototype.animate = () => ({
-    cancel() {}, finish() {}, play() {}, pause() {}, reverse() {},
-    finished: Promise.resolve(), onfinish: null, oncancel: null,
+if (!proto.getAnimations) proto.getAnimations = () => [];
+if (!proto.animate) {
+  proto.animate = () => ({
+    cancel() {},
+    finish() {},
+    play() {},
+    pause() {},
+    reverse() {},
+    finished: Promise.resolve(),
+    onfinish: null,
+    oncancel: null,
   });
 }

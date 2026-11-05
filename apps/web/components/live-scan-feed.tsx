@@ -10,6 +10,7 @@ import {
   Settings02Icon, SourceCodeIcon, Cancel01Icon,
 } from '@hugeicons/core-free-icons';
 import { SCAN_STATUS_LABEL } from '@/lib/format';
+import { describeScanEvent } from '@/lib/scan-event-line';
 
 type Ev = Record<string, unknown> & { type: string; at: string };
 
@@ -21,16 +22,14 @@ const STAGES = [
   { key: 'complete', label: 'Done', icon: CheckmarkCircle02Icon },
 ];
 
+const EVENT_ICON: Record<string, Parameters<typeof Icon>[0]['icon']> = {
+  status: Settings02Icon, log: Settings02Icon, candidate: AiBrain01Icon,
+  referee: JusticeScale01Icon, finding: Bug01Icon, done: CheckmarkCircle02Icon,
+};
 function eventLine(ev: Ev): { icon: Parameters<typeof Icon>[0]['icon']; text: string; hue?: 'error' | 'success' } | null {
-  switch (ev.type) {
-    case 'status': return { icon: Settings02Icon, text: `Stage: ${SCAN_STATUS_LABEL[String(ev.status)] ?? ev.status}` };
-    case 'log': return { icon: Settings02Icon, text: String(ev.message) };
-    case 'candidate': return { icon: AiBrain01Icon, text: `${String(ev.model)} proposed a ${String(ev.weaknessClass)} attack on ${String(ev.contract)}` };
-    case 'referee': return { icon: JusticeScale01Icon, text: `${String(ev.referee)} ran the attack: ${String(ev.outcome)}`, hue: ev.outcome === 'moved' ? 'error' : undefined };
-    case 'finding': return { icon: Bug01Icon, text: `${String(ev.title)} — ${String(ev.consensus)}`, hue: ev.isRed ? 'error' : 'success' };
-    case 'done': return { icon: CheckmarkCircle02Icon, text: `Scan complete — ${Number(ev.redCount)} red`, hue: Number(ev.redCount) > 0 ? 'error' : 'success' };
-    default: return null;
-  }
+  const d = describeScanEvent(ev);
+  if (!d) return null;
+  return { icon: EVENT_ICON[ev.type] ?? Settings02Icon, text: d.text, hue: d.hue };
 }
 
 export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initialStatus: string }) {
