@@ -9,7 +9,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const queue = createScanQueue();
   try {
     const res = await cancelScan(db(), queue, id);
-    return NextResponse.json(res, { status: res.cancelled ? 200 : 409 });
+    const status = res.cancelled ? 200 : res.reason === 'not found' ? 404 : 409;
+    return NextResponse.json(res, { status });
   } finally {
     await queue.close();
   }
