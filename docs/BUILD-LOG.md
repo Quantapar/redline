@@ -118,3 +118,18 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
   "moved", consensus "reproduced", finding appears. Full red->proof->fix loop is interactive.
 - Race fix: Redis pub/sub has no replay, and a sim scan finishes in ~2.5s before the client
   SSE connects -> added a 1.5s startup delay before the run emits + the status-poll fallback.
+
+## 2026-11-06 — GitHub App (Probot) + CLI
+- apps/github-app: Probot app. Pure, tested decideIntake (scan only when .sol contracts change,
+  incremental unless first scan, ignores test/mock/script + non-default pushes) and
+  buildCheckOutput (red -> check failure with proof links). Handlers: PR open/sync/reopen, push,
+  installation — upsert account/installation/repo, open in-progress check, create+enqueue scan.
+  7 tests. Registration checklist in docs/GITHUB_APP.md (needs App ID/private key/webhook secret).
+- packages/cli: `redline policy` (init/add/list/remove) over .redline/policy.yml, validated by the
+  shared Policy schema. Pure policy module (7 tests) + a tsx launcher bin. Live-smoke verified.
+- Totals: 65 tests across 8 packages, all typecheck clean.
+
+## Next
+- Going-live gates scaffolding (ENS deploy lock, Safe guard) — partner ENS.
+- Subagent code review of the uncommitted/whole diff -> create PRIVATE GitHub repo (Quantapar)
+  -> push. Secret-scan history before any push.

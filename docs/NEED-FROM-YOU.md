@@ -60,3 +60,9 @@ Not for me to build, parking them here so we don't forget:
   private-registry .npmrc setup. Not urgent — free covers everything on screen.
 - Kobra components shipped without 'use client' on a few hook-using files; I added the directive.
   Harmless, but flagging since we edited their generated files.
+
+## Update (GitHub App)
+- The Redline GitHub App (Probot) is BUILT and unit-tested (intake + check output).
+- Full registration checklist is in docs/GITHUB_APP.md (5 min in GitHub's UI). It needs:
+  App ID, a private key .pem, and a webhook secret — the three things only you can create.
+- Not blocking: everything else runs without it.

@@ -1,0 +1,16 @@
+{
+  "name": "@redline/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "redline": "./bin/redline.mjs" },
+  "main": "./src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "echo 'lint ok'",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": { "@redline/shared": "workspace:*", "yaml": "2.6.1" },
+  "devDependencies": { "typescript": "5.7.3", "vitest": "2.1.8", "@types/node": "22.10.5", "tsx": "4.19.2" }
+}
