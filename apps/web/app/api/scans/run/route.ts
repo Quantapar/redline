@@ -6,6 +6,7 @@ import { DEFAULT_POLICY } from '@redline/shared';
 import { runScan } from '@redline/worker';
 import { db } from '@/lib/db';
 import { publisher, publishEvent } from '@/lib/scan-events';
+import { rateLimit, clientKey } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,8 @@ class PacedEngine extends SimulationRefereeEngine {
 }
 
 export async function POST(req: Request) {
+  const rl = rateLimit(`scan:${clientKey(req)}`, 20, 60_000);
+  if (!rl.ok) return NextResponse.json({ error: 'rate limited' }, { status: 429 });
   const body = await req.json().catch(() => ({}));
   const d = db();
 

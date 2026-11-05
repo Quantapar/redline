@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { eq, schema } from '@redline/db';
 import { OGRouterClient, buildFixMessages, parseFix, DEFAULT_FIXER_MODEL } from '@redline/hunters';
 import { db } from '@/lib/db';
+import { rateLimit, clientKey } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const rl = rateLimit(`fix:${clientKey(req)}`, 10, 60_000);
+  if (!rl.ok) return NextResponse.json({ error: 'rate limited' }, { status: 429, headers: { 'retry-after': String(Math.ceil(rl.retryAfterMs / 1000)) } });
   const { id } = await params;
   const d = db();
 
