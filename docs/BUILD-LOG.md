@@ -357,3 +357,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   its source, stores the check-run id, and enqueues; no contract change -> no scan. 2 tests.
 - Added uuid-validator and admin-guard tests; an encryption-at-rest pipeline test.
 - Totals: 171 tests across 10 packages, all green.
+
+## 2026-11-06 — CSRF hardening
+- Added a same-origin guard on the UI-called mutation endpoints (scan run, finding status, fix,
+  scan cancel). A malicious site can no longer POST to them from a browser (cross-origin -> 403)
+  while the same-origin dashboard works unchanged. Non-browser clients (no Origin) still pass; the
+  real defence for those is the session-auth layer (ROADMAP). 3 tests. Verified live.
+- Totals: 174 tests across 10 packages, all green.

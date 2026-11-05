@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sameOrigin } from '@/lib/auth';
 import { eq, schema, createScan } from '@redline/db';
 import { SimulationRefereeEngine, type RefereeInput } from '@redline/engine';
 import { FakeRouterClient, type ChatRequest, type RouterClient } from '@redline/hunters';
@@ -53,6 +54,8 @@ class PacedEngine extends SimulationRefereeEngine {
 }
 
 export async function POST(req: Request) {
+  const csrf = sameOrigin(req);
+  if (csrf) return csrf;
   const rl = rateLimit(`scan:${clientKey(req)}`, 20, 60_000);
   if (!rl.ok) return NextResponse.json({ error: 'rate limited' }, { status: 429 });
   const body = await req.json().catch(() => ({}));

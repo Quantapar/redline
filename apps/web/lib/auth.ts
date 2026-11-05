@@ -16,3 +16,23 @@ export function requireAdmin(req: Request): NextResponse | null {
   }
   return null;
 }
+
+/**
+ * Same-origin guard for state-changing requests. Blocks a browser on another
+ * site from POSTing to our endpoints (cross-site request forgery) without
+ * needing a login: a same-origin fetch carries a matching Origin; a cross-site
+ * one does not. A direct non-browser client (no Origin) is allowed through —
+ * the real defence for those is the session-auth layer (see ROADMAP).
+ */
+export function sameOrigin(req: Request): NextResponse | null {
+  const origin = req.headers.get('origin');
+  if (!origin) return null; // non-browser client; no CSRF risk
+  try {
+    if (new URL(origin).host !== new URL(req.url).host) {
+      return NextResponse.json({ error: 'cross-origin request blocked' }, { status: 403 });
+    }
+  } catch {
+    return NextResponse.json({ error: 'bad origin' }, { status: 403 });
+  }
+  return null;
+}

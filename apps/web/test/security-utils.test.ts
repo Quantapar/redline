@@ -33,3 +33,18 @@ describe('requireAdmin', () => {
     expect(requireAdmin(req('Bearer secret'))).toBeNull();
   });
 });
+
+import { sameOrigin } from '../lib/auth';
+
+describe('sameOrigin (CSRF guard)', () => {
+  const req = (origin?: string) => new Request('http://localhost:3000/api/x', { method: 'POST', headers: origin ? { origin } : {} });
+  it('allows a same-origin request', () => {
+    expect(sameOrigin(req('http://localhost:3000'))).toBeNull();
+  });
+  it('blocks a cross-origin request', () => {
+    expect(sameOrigin(req('https://evil.example'))?.status).toBe(403);
+  });
+  it('allows a request with no Origin (non-browser client)', () => {
+    expect(sameOrigin(req())).toBeNull();
+  });
+});

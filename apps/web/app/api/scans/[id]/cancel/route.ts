@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
+import { sameOrigin } from '@/lib/auth';
 import { createScanQueue, cancelScan } from '@redline/worker';
 import { db } from '@/lib/db';
 import { isUuid } from '@/lib/validate';
 
 export const runtime = 'nodejs';
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const csrf = sameOrigin(req);
+  if (csrf) return csrf;
   const { id } = await params;
   if (!isUuid(id)) return NextResponse.json({ error: 'invalid id' }, { status: 400 });
   const queue = createScanQueue();
