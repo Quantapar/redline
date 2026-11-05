@@ -17,3 +17,7 @@ broadcast/
 .pnpm-store/
 playwright-report/
 test-results/
+
+# registry auth
+.npmrc
+**/.npmrc

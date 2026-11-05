@@ -1,0 +1,55 @@
+# Need from you (when you're back)
+
+Running list of things only you can do or decide. I update this as I go.
+Nothing here blocks the build — everything below has a working fallback in place.
+
+## Received (done)
+- [x] GitHub account for repo + App: **Quantapar**, repo **private** for now.
+- [x] 0G Compute Router API key — stored in `.env`, verified (124 models live).
+- [x] Alchemy mainnet archive RPC — stored, verified (block ~26,350,718).
+- [x] Alchemy Sepolia RPC (from the "testing" app key) — stored, verified.
+- [x] Kobra registry token — stored in `.env`; wired via shadcn registry in the web app.
+- [x] Hugeicons key — stored in `.env`.
+- [x] Second partner to build deep: **ENS** (deploy-lock + agent identities).
+- [x] Stripe — **skipped for now** per your call; billing is stubbed behind an interface.
+
+## Still needed (have fallbacks, not blocking)
+
+### 1. GitHub App registration  (I'll walk you through it)
+To make the GitHub App live (install on real repos, receive webhooks), you register
+an App at github.com/settings/apps/new under the Quantapar account. It produces three
+secrets I can't generate for you:
+- App ID
+- a private key (.pem download)
+- a webhook secret (you choose it)
+I'll give you the exact field-by-field checklist when you're back. Until then the App
+runs against a local webhook simulator with fixture payloads, fully testable.
+
+### 2. Sepolia test wallet (for the ENS / Safe going-live demo only)
+Not an API key — a real wallet secret. I will GENERATE a throwaway wallet for the demo
+so you never hand me a real private key. You only need to:
+- fund its address with Sepolia test ETH from a faucet (I'll give you the address), and
+- (optional) pick an ENS name on Sepolia for the deploy-lock demo.
+This is only for the going-live gate demo, which is the last feature, so no rush.
+
+### 3. Decide when to flip the repo public
+You said we go public to follow ETHGlobal rules. Tell me the moment and I'll flip it.
+Before flipping I'll run a secret-scan over history to be 100% sure no key ever landed
+in a commit (they're all in gitignored `.env`, so this should be clean).
+
+### 4. Booth questions for partners (from the brief, Part 6 — your conversations)
+Not for me to build, parking them here so we don't forget:
+- 0G: which models run in fully-private (nothing-kept) mode vs routed; can we host a
+  self-chosen security model in their private compute; does a dev tool qualify; rate limits.
+- ENS: how to lock a permission to exactly one key/group (master key + up to 15 holders);
+  does each agent need its own resolver; confirm ENS controls who-can-change only.
+- All three: can one project win multiple prizes; must each feature be central or just used.
+
+## Notes / decisions I made for you (flag if you disagree)
+- Monorepo: pnpm workspaces + Turborepo.
+- DB: PostgreSQL + Drizzle. Queue: Redis + BullMQ. Both running locally.
+- Scope line on the sensitive part: the AI layer is a generic, model-agnostic router
+  client that generates proof-of-concept tests against YOUR OWN contracts in a sandbox.
+  No jailbreaks, no canned weaponized exploits against third-party live contracts, and
+  the ownership-proof gate ships as a hard requirement. Say the word if you want this
+  revisited.
