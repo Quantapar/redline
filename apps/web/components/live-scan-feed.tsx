@@ -58,7 +58,9 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
         /* ignore */
       }
     };
-    es.onerror = () => es.close();
+    // Let EventSource auto-reconnect on transient blips; the done handler and the
+    // status poll below both close it deliberately when the scan is actually finished.
+    es.onerror = () => { /* keep the connection; native retry handles transient errors */ };
 
     // Fallback: poll status in case the live stream missed the 'done' event.
     const poll = setInterval(async () => {

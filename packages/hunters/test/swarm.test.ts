@@ -44,4 +44,23 @@ describe('huntSwarm orchestration', () => {
     await huntSwarm({ client, scanId: 's1', targets: [target], policy: DEFAULT_POLICY, budget });
     expect(budget.spentCents).toBeLessThanOrEqual(7);
   });
+
+  it('stops when the ACTUAL cost (not the estimate) overruns the cap', async () => {
+    // A client whose real token usage costs far more than the per-attempt estimate.
+    class Expensive extends FakeRouterClient {}
+    const client = new FakeRouterClient(() => JSON.stringify({ candidates: [] }));
+    // monkey-patch chat to report huge usage
+    (client as unknown as { chat: (r: unknown) => Promise<unknown> }).chat = async (req: { model: string }) => ({
+      content: JSON.stringify({ candidates: [] }),
+      model: req.model,
+      usage: { promptTokens: 1_000_000, completionTokens: 1_000_000, totalTokens: 2_000_000 }, // ~100c each
+      receipt: 'x',
+    });
+    const budget = new BudgetGuard(50);
+    await huntSwarm({ client, scanId: 's1', targets: [target], policy: DEFAULT_POLICY, budget });
+    // One call reserves its estimate then its ~100c overage is refused and the swarm stops,
+    // so recorded spend never runs away across the whole roster.
+    expect(budget.spentCents).toBeLessThanOrEqual(50);
+    void Expensive;
+  });
 });

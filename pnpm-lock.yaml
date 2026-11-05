@@ -38,6 +38,9 @@ importers:
       '@redline/worker':
         specifier: workspace:*
         version: link:../../packages/worker
+      bullmq:
+        specifier: 5.34.5
+        version: 5.34.5
       probot:
         specifier: 13.4.5
         version: 13.4.5

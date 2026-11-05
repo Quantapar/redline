@@ -4,7 +4,8 @@ import { getFindingDetail } from '@/lib/queries';
 import { CouncilPanel } from '@/components/council-panel';
 import { FixItButton } from '@/components/fix-it-button';
 import { StatusBadge } from '@/components/status-badge';
-import { CodeBlock } from '@/components/ui/code-block';
+import { LockedAttack } from '@/components/locked-attack';
+import { redactAttack } from '@/lib/redact';
 import { Icon } from '@/components/icon';
 import {
   Bug01Icon, LockedIcon, SourceCodeIcon, ArrowRight01Icon, Shield01Icon, Coins01Icon, AiBrain01Icon,
@@ -23,6 +24,7 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
   const { finding, candidate, runs, scan, repo } = data;
   const consensus = CONSENSUS_LABEL[finding.consensus] ?? { label: finding.consensus, hue: 'neutral' as const };
   const movedRun = runs.find((r) => r.outcome === 'moved');
+  const redacted = candidate?.forgeTest ? redactAttack(candidate.forgeTest) : null;
   const atRisk = movedRun ? netMovedWei(movedRun.deltas) : candidate?.claimedValueWei ?? '0';
 
   return (
@@ -64,7 +66,7 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
               </span>
             </div>
             <div className="p-3">
-              <CodeBlock code={candidate?.forgeTest ?? '// no attack recorded'} language="ts" filename="Exploit.t.sol" />
+              {redacted ? <LockedAttack preview={redacted.preview} hiddenLines={redacted.hiddenLines} /> : <div className="px-2 py-6 text-center text-[13px] text-muted-foreground">No attack recorded.</div>}
             </div>
           </div>
         </div>

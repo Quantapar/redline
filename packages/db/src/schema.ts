@@ -49,6 +49,7 @@ export const scans = pgTable('scans', {
   commitSha: text('commit_sha').notNull(),
   baseSha: text('base_sha'),
   prNumber: integer('pr_number'),
+  githubCheckRunId: bigint('github_check_run_id', { mode: 'number' }),
   isIncremental: boolean('is_incremental').notNull().default(true),
   changedTargets: jsonb('changed_targets').notNull().default([]),
   budgetCapCents: integer('budget_cap_cents').notNull().default(500),

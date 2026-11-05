@@ -11,6 +11,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const [finding] = await d.select().from(schema.findings).where(eq(schema.findings.id, id)).limit(1);
   if (!finding) return NextResponse.json({ error: 'finding not found' }, { status: 404 });
+  if (!finding.isRed) return NextResponse.json({ error: 'only a reproduced (red) finding can be fixed' }, { status: 422 });
 
   const [candidate] = await d.select().from(schema.candidates).where(eq(schema.candidates.id, finding.candidateId)).limit(1);
   if (!candidate?.contractSource) {

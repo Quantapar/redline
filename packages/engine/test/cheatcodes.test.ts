@@ -36,7 +36,18 @@ describe('cheatcode scanner', () => {
   });
   it('covers every forbidden cheat name', () => {
     for (const c of FORBIDDEN_CHEATS) {
-      expect(scanCheats(`x = ${c}something;`).hasForbidden).toBe(true);
+      const call = c.endsWith('(') ? `${c}attacker, 1 ether);` : `${c}(attacker, 1 ether);`;
+      expect(scanCheats(`  ${call}`).hasForbidden).toBe(true);
     }
+  });
+
+  it('catches cheats obfuscated with whitespace or block comments', () => {
+    expect(scanCheats('vm . deal(attacker, 1 ether);').hasForbidden).toBe(true);
+    expect(scanCheats('vm./* sneaky */deal(attacker, 1 ether);').hasForbidden).toBe(true);
+    expect(scanCheats('vm\n  .deal(attacker, 1);').hasForbidden).toBe(true);
+  });
+
+  it('does not flag a different identifier that merely starts the same', () => {
+    expect(scanCheats('uint dealmaker = 1; realTransfer();').hasForbidden).toBe(false);
   });
 });

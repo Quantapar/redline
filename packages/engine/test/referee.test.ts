@@ -51,6 +51,15 @@ describe('SimulationRefereeEngine + council', () => {
     expect(result.isRed).toBe(false);
   });
 
+  it('does NOT call a below-threshold payout a theft (threshold is enforced)', async () => {
+    // exploitable, but the net moved is below the council threshold (0.001 ETH).
+    const c = candidate('// @redline-sim exploitable=true netWei=1000 cheatDependent=false flaky=false\n target.withdraw();', 'tiny');
+    const { result, runs } = await runCouncil(new SimulationRefereeEngine(), c, dispatch);
+    expect(runs.every((r) => r.outcome === 'did-not-move')).toBe(true);
+    expect(result.isRed).toBe(false);
+    expect(result.consensus).toBe('not-reproduced');
+  });
+
   it('parses sim directives', () => {
     const d = parseSimDirective('// @redline-sim exploitable=true netWei=42 cheatDependent=false flaky=false');
     expect(d?.exploitable).toBe(true);

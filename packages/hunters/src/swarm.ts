@@ -39,7 +39,10 @@ export async function huntSwarm(input: SwarmInput): Promise<Candidate[]> {
     for (const target of remaining) {
       for (const model of models) {
         if ((found.get(target.contractName)?.length ?? 0) >= stopAfter) break;
-        if (!input.budget.canAfford(model.estCentsPerAttempt)) {
+        // Reserve the estimated cost BEFORE spending real money. If the reservation
+        // does not fit under the cap, the budget is spent — stop the swarm. This makes
+        // the cap hard: we never make a paid call we have not already charged for.
+        if (!input.budget.charge(model.estCentsPerAttempt)) {
           input.onProgress?.(`budget cap reached; stopping swarm (spent ${input.budget.spentCents}c)`);
           return all;
         }
@@ -53,10 +56,16 @@ export async function huntSwarm(input: SwarmInput): Promise<Candidate[]> {
           });
         } catch (err) {
           input.onProgress?.(`${model.id} error: ${String(err).slice(0, 120)}`);
-          input.budget.charge(model.estCentsPerAttempt);
-          continue;
+          continue; // the estimate was already reserved above
         }
-        input.budget.charge(estimateCostCents(resp, model.estCentsPerAttempt));
+        // Reconcile the estimate with the actual token-derived cost. If the real cost
+        // overruns the cap, we have already overspent on THIS call — stop before making
+        // any more paid calls.
+        const overage = estimateCostCents(resp, model.estCentsPerAttempt) - model.estCentsPerAttempt;
+        if (overage > 0 && !input.budget.charge(overage)) {
+          input.onProgress?.(`budget cap exceeded by actual cost; stopping swarm (spent ${input.budget.spentCents}c)`);
+          return all;
+        }
         const cands = parseCandidates(resp, input.scanId, target.contractName).map((c) => ({
           ...c,
           targetContract: target.contractName,

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { Candidate, RefereeRun, BalanceDelta } from '@redline/shared';
 import type { RefereeEngine, RefereeInput } from './referee.js';
 import { stripForReferee } from './cheatcodes.js';
+import { attackerGained } from '@redline/shared';
 import { detectFoundry, forgeTest } from './foundry.js';
 
 function wrapTest(candidate: Candidate, cleaned: string, contractName: string): string {
@@ -71,8 +72,12 @@ export class FoundryRefereeEngine implements RefereeEngine {
         timeoutMs: 180_000,
       });
 
-      const net = parseNet(result.raw) ?? input.candidate.claimedValueWei;
       if (result.passed) {
+        // The test passing is necessary but not sufficient: the council votes on the
+        // FACT that value met the threshold, measured from the attack's own emitted
+        // net. A pass that moves nothing (or below threshold) is NOT a theft.
+        const parsed = parseNet(result.raw);
+        const net = parsed ?? '0';
         const delta: BalanceDelta = {
           token: 'native',
           attackerBefore: '0',
@@ -81,7 +86,12 @@ export class FoundryRefereeEngine implements RefereeEngine {
           targetAfter: '0',
           attackerNetOfGas: net,
         };
-        return { ...base, outcome: 'moved', deltas: [delta], finishedAt: now(), traceRef: `forge://${testName}` };
+        const moved = attackerGained([delta], input.thresholdWei);
+        if (moved) {
+          return { ...base, outcome: 'moved', deltas: [delta], finishedAt: now(), traceRef: `forge://${testName}` };
+        }
+        // Passed, but no value at or above the threshold actually moved.
+        return { ...base, outcome: 'did-not-move', deltas: [delta], finishedAt: now(), traceRef: `forge://${testName}` };
       }
       if (/compil|parser|error\[/i.test(result.raw)) {
         return { ...base, outcome: 'build-failed', finishedAt: now(), error: 'compile error' };

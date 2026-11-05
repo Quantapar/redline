@@ -1,7 +1,12 @@
 import type { Probot, Context } from 'probot';
 import { createDb, schema, createScan } from '@redline/db';
-import { createScanQueue, enqueueScan } from '@redline/worker';
-import { decideIntake, type IntakeEvent } from './scan-intake.js';
+import { createScanQueue, enqueueScan, createRedis, SCAN_QUEUE } from '@redline/worker';
+import { setScanCheckRun, getScanCompletionContext } from '@redline/db';
+import { QueueEvents } from 'bullmq';
+import { decideIntake, buildCheckOutput, type IntakeEvent } from './scan-intake.js';
+import type { Finding } from '@redline/shared';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 interface RepoMeta {
   ownerLogin: string;
@@ -19,6 +24,29 @@ interface RepoMeta {
 export function redlineApp(app: Probot): void {
   const { db } = createDb();
   const queue = createScanQueue();
+
+  // When a scan completes (in the separate worker process), resolve its check.
+  const events = new QueueEvents(SCAN_QUEUE, { connection: createRedis() });
+  events.on('completed', async ({ jobId }: { jobId: string }) => {
+    try {
+      const job = await queue.getJob(jobId);
+      const scanId = job?.data.scanId as string | undefined;
+      if (!scanId) return;
+      const ctx = await getScanCompletionContext(db, scanId);
+      if (!ctx || !ctx.checkRunId || ctx.installationId == null) return;
+      const [owner, repo] = ctx.repoFullName.split('/');
+      const octokit = await app.auth(ctx.installationId);
+      const out = buildCheckOutput(ctx.findings as unknown as Finding[], APP_URL);
+      await octokit.checks.update({
+        owner: owner!, repo: repo!, check_run_id: ctx.checkRunId,
+        status: 'completed', conclusion: out.conclusion, completed_at: new Date().toISOString(),
+        output: { title: out.title, summary: out.summary },
+      });
+      app.log.info(`[redline] resolved check ${ctx.checkRunId} for scan ${scanId}: ${out.conclusion}`);
+    } catch (err) {
+      app.log.error(`[redline] failed to resolve check: ${String(err)}`);
+    }
+  });
 
   async function upsertRepo(meta: RepoMeta, installationId: number): Promise<string> {
     const [account] = await db
@@ -52,6 +80,16 @@ export function redlineApp(app: Probot): void {
 
     const repositoryId = await upsertRepo(meta, installationId);
 
+    const scan = await createScan(db, {
+      repositoryId,
+      trigger: decision.trigger,
+      commitSha: ev.headSha,
+      baseSha: ev.baseSha,
+      prNumber: ev.prNumber,
+      isIncremental: decision.isIncremental,
+      changedTargets: decision.solidityFiles.map((f) => ({ file: f, contract: '', changedFunctions: [], connectedFunctions: [] })),
+    });
+
     const check = await octokit.checks.create({
       ...repoRef,
       name: 'Redline — proof, not opinion',
@@ -63,16 +101,7 @@ export function redlineApp(app: Probot): void {
         summary: 'Redline is trying to take the money. You are only blocked if it succeeds.',
       },
     });
-
-    const scan = await createScan(db, {
-      repositoryId,
-      trigger: decision.trigger,
-      commitSha: ev.headSha,
-      baseSha: ev.baseSha,
-      prNumber: ev.prNumber,
-      isIncremental: decision.isIncremental,
-      changedTargets: decision.solidityFiles.map((f) => ({ file: f, contract: '', changedFunctions: [], connectedFunctions: [] })),
-    });
+    await setScanCheckRun(db, scan.id, check.data.id);
 
     await enqueueScan(queue, scan.id, decision.trigger === 'pull-request' ? 3 : 5);
     app.log.info(`[redline] queued scan ${scan.id} (check ${check.data.id})`);

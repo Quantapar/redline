@@ -86,3 +86,25 @@ export async function getRepository(db: Database, repositoryId: string) {
   const [row] = await db.select().from(s.repositories).where(eq(s.repositories.id, repositoryId)).limit(1);
   return row ?? null;
 }
+
+// ---- GitHub check wiring ----
+export async function setScanCheckRun(db: Database, scanId: string, checkRunId: number) {
+  await db.update(s.scans).set({ githubCheckRunId: checkRunId }).where(eq(s.scans.id, scanId));
+}
+
+/** Everything the GitHub App needs to resolve a check when a scan completes. */
+export async function getScanCompletionContext(db: Database, scanId: string) {
+  const [scan] = await db.select().from(s.scans).where(eq(s.scans.id, scanId)).limit(1);
+  if (!scan) return null;
+  const [repo] = await db.select().from(s.repositories).where(eq(s.repositories.id, scan.repositoryId)).limit(1);
+  if (!repo) return null;
+  const [inst] = await db.select().from(s.installations).where(eq(s.installations.id, repo.installationId)).limit(1);
+  const findings = await db.select().from(s.findings).where(eq(s.findings.scanId, scanId));
+  return {
+    scan,
+    repoFullName: repo.fullName,
+    installationId: inst?.githubInstallationId ?? null,
+    checkRunId: scan.githubCheckRunId,
+    findings,
+  };
+}

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Candidate, RefereeRun, RefereeOutcome, BalanceDelta } from '@redline/shared';
-import { tallyCouncil, type CouncilConfig, type CouncilResult, DEFAULT_COUNCIL } from '@redline/shared';
+import { tallyCouncil, attackerGained, type CouncilConfig, type CouncilResult, DEFAULT_COUNCIL } from '@redline/shared';
 import { stripForReferee, scanCheats } from './cheatcodes.js';
 
 export interface RefereeInput {
@@ -98,7 +98,9 @@ export class SimulationRefereeEngine implements RefereeEngine {
       targetAfter: '0',
       attackerNetOfGas: directive.netWei,
     };
-    return mkRun(input, 'moved', { deltas: [delta], traceRef: `sim://${input.refereeName}` });
+    // The fact the council votes on: did value at or above the threshold move?
+    const moved = attackerGained([delta], input.thresholdWei);
+    return mkRun(input, moved ? 'moved' : 'did-not-move', { deltas: [delta], traceRef: `sim://${input.refereeName}` });
   }
 }
 
@@ -126,13 +128,15 @@ export async function runCouncil(
   candidate: Candidate,
   dispatch: CouncilDispatch,
 ): Promise<CouncilOutcome> {
-  const { cleaned } = stripForReferee(candidate.forgeTest);
-  const strippedCandidate: Candidate = { ...candidate, forgeTest: candidate.forgeTest, usedShortcuts: cleaned !== candidate.forgeTest };
+  // Each referee engine strips forbidden cheats itself (plain-transactions rule);
+  // here we only flag whether the candidate leaned on any, for the record.
+  const { removed } = stripForReferee(candidate.forgeTest);
+  const forRun: Candidate = { ...candidate, usedShortcuts: removed.length > 0 };
 
   const runs = await Promise.all(
     dispatch.providers.map((provider, i) =>
       engine.run({
-        candidate: strippedCandidate,
+        candidate: forRun,
         refereeName: `referee-${String.fromCharCode(97 + i)}`,
         provider,
         forkUrl: dispatch.forkUrlFor?.(provider),

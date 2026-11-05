@@ -145,3 +145,23 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
 - Repo github.com/Quantapar/redline created (private). Secret scan of history: clean
   (only .env.example tracked, no .npmrc, no key fragments in any commit). Awaiting the
   independent review before first push.
+
+## 2026-11-06 — independent review fixes (pre-push)
+Addressed all 10 findings from the independent review subagent:
+1. HIGH: council never checked value vs threshold — wired attackerGained() into BOTH referee
+   engines; a passing test that moves < threshold is now 'did-not-move'. New test locks it in.
+2. HIGH: budget cap not hard — swarm now RESERVES the estimate before each paid call and stops;
+   if actual cost overruns, it halts before any further call. New test exercises actual>estimate.
+3. HIGH: cheat detection was naive substring — now whitespace/newline/block-comment tolerant
+   regexes (catches `vm . deal(`, `vm./* */deal(`, split lines). New obfuscation tests.
+4. HIGH: runnable exploit shown to everyone — redactAttack() redacts server-side so the full
+   attack never reaches the client; LockedAttack shows a silhouette + "prove ownership".
+5. MED: fix endpoint now requires a red finding (422 otherwise).
+6. HIGH: in-progress GitHub check never resolved — store check-run id on the scan; github-app
+   runs a BullMQ QueueEvents 'completed' handler that updates the check red/green via an
+   installation octokit.
+7. MED: runCouncil no longer mislabels the candidate as "stripped" — engines strip internally.
+8. MED: listRepositories N+1 collapsed to 3 queries.
+9. LOW: Finding.refereeCount now counts valid (non-error) runs, matching the tally.
+10. LOW: live feed no longer closes the stream on a transient SSE error (native reconnect).
+- Totals: 76 tests across 9 packages, all typecheck clean. Production `next build` passes.

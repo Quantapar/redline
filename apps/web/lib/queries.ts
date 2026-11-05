@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from '@redline/db';
+import { desc, eq, sql } from '@redline/db';
 import { schema } from '@redline/db';
 import { db } from './db';
 
@@ -18,19 +18,21 @@ export async function getStats() {
 
 export async function listRepositories() {
   const d = db();
-  const rows = await d.select().from(schema.repositories).orderBy(schema.repositories.fullName);
-  // attach latest scan + red count per repo
-  return Promise.all(
-    rows.map(async (r) => {
-      const [latest] = await d.select().from(schema.scans).where(eq(schema.scans.repositoryId, r.id)).orderBy(desc(schema.scans.createdAt)).limit(1);
-      const [red] = await d
-        .select({ n: sql<number>`count(*)` })
-        .from(schema.findings)
-        .innerJoin(schema.scans, eq(schema.findings.scanId, schema.scans.id))
-        .where(and(eq(schema.scans.repositoryId, r.id), eq(schema.findings.isRed, true)));
-      return { ...r, latestScan: latest ?? null, redCount: Number(red?.n ?? 0) };
-    }),
-  );
+  // Three queries total, independent of repo count (no N+1).
+  const [rows, allScans, redRows] = await Promise.all([
+    d.select().from(schema.repositories).orderBy(schema.repositories.fullName),
+    d.select().from(schema.scans).orderBy(desc(schema.scans.createdAt)),
+    d
+      .select({ repositoryId: schema.scans.repositoryId, n: sql<number>`count(*)` })
+      .from(schema.findings)
+      .innerJoin(schema.scans, eq(schema.findings.scanId, schema.scans.id))
+      .where(eq(schema.findings.isRed, true))
+      .groupBy(schema.scans.repositoryId),
+  ]);
+  const latestByRepo = new Map<string, (typeof allScans)[number]>();
+  for (const scan of allScans) if (!latestByRepo.has(scan.repositoryId)) latestByRepo.set(scan.repositoryId, scan);
+  const redByRepo = new Map(redRows.map((r) => [r.repositoryId, Number(r.n)]));
+  return rows.map((r) => ({ ...r, latestScan: latestByRepo.get(r.id) ?? null, redCount: redByRepo.get(r.id) ?? 0 }));
 }
 
 export async function listRecentScans(limit = 10) {
