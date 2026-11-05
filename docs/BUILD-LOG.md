@@ -304,3 +304,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   the dashboard's open-alarms section dropped it (3 -> 2). CLI dispatch now covered (6 tests),
   recipes empty state added. Production build passes.
 - Totals: 160 tests across 10 packages, all green.
+
+## 2026-11-06 — prep-for-prod sweep
+- Added a viewport meta (device-width, viewport-fit=cover) and theme-color matching the dark shell
+  (was missing). Changed the app shell from 100vh to 100dvh so it doesn't overflow behind a mobile
+  URL bar. Added visible focus rings to the sidebar nav links, the wordmark, and the clickable
+  finding cards (keyboard users had no focus indicator on these custom links).
+- Verified from code: Kobra inputs already use 16px on mobile (no iOS zoom); reduced-motion is
+  handled in globals; the app is dark-only so there is no theme flash; no secrets or stray debug
+  logs in source. Device checks (real iPhone/Android, screen reader order) remain for the user.
