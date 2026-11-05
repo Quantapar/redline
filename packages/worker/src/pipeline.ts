@@ -55,6 +55,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
 
   await setStatus('preparing', { startedAt: new Date() });
   const { targets, policy } = await deps.prepare(scan);
+  const sourceByContract = new Map(targets.map((t) => [t.contractName, t.source]));
   emit({ type: 'log', scanId, message: `prepared ${targets.length} target(s)`, at: now() });
 
   // ---- Hunt ----
@@ -79,6 +80,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
       hunterModel: c.hunterModel,
       weaknessClass: c.weaknessClass,
       targetContract: c.targetContract,
+      contractSource: sourceByContract.get(c.targetContract) ?? null,
       targetFunction: c.targetFunction,
       summary: c.summary,
       forgeTest: c.forgeTest,

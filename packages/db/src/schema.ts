@@ -67,6 +67,7 @@ export const candidates = pgTable('candidates', {
   hunterModel: text('hunter_model').notNull(),
   weaknessClass: text('weakness_class').notNull(),
   targetContract: text('target_contract').notNull(),
+  contractSource: text('contract_source'),
   targetFunction: text('target_function'),
   summary: text('summary').notNull(),
   forgeTest: text('forge_test').notNull(),

@@ -81,3 +81,27 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
   findings pages, policy view. THE visual deliverable — no slop.
 - apps/github-app: Probot (webhooks, checks API, Fix-it PR).
 - packages/cli: redline policy. Then subagent review -> create private repo -> push.
+
+## 2026-11-06 — web dashboard + fixer (demo spine live)
+- apps/web: Next 15 + React 19 + Tailwind v4 + Kobra design system (shadcn registry) + hugeicons (free set).
+- Design system: dark-first, achromatic neutrals + 4 status hues, red reserved for alarms/brand.
+  Tokens in globals.css (OKLCH), merged cleanly with Kobra's component styles.
+- Installed ~36 Kobra components. Pages: Overview dashboard (stats, recent scans, open red
+  findings) and Finding detail (council panel with per-referee money-moved, the attack code-block
+  with ownership lock, Fix-it, value/model/forever-test sidebar).
+- Fixer: @redline/hunters fixer.ts + /api/findings/[id]/fix route. LIVE PROVEN: claude-sonnet-5.5
+  via 0G read the real vulnerable EtherVault and produced a correct checks-effects-interactions
+  diff + plain explanation, saved as a Fix row on branch redline/fix-...
+- Seed: scripts/seed-demo.mts runs the real pipeline to populate 3 repos / 2 red findings.
+- Schema: added candidates.contract_source (the fixer needs the source); wired through pipeline.
+- Fixes/gotchas (Next + Kobra):
+  - Tailwind v4 "Missing field negated" -> bump tailwindcss + @tailwindcss/postcss to 4.3.4 (match).
+  - workspace .js imports -> next.config webpack resolve.extensionAlias {.js:[.ts,.tsx,.js]}.
+  - Kobra code-block (and copy-check/dropdown/sidebar/spinner/task-list/toast) ship without
+    'use client' but use hooks -> added the directive so server components can import them.
+  - code-block imports lucide-react -> installed (iconLibrary: lucide in components.json).
+  - Button-as-Link needs nativeButton={false} (Base UI).
+  - Badge sizes are only default|sm (no xs). Web tsconfig lib bumped to ES2023 (Kobra uses toSorted).
+  - Dev webpack cache ENOENT races when rm -rf .next hits a live server -> disabled dev cache +
+    always kill ALL :3000 PIDs before restart.
+- Hydration warning on <body> is a browser extension (cz-shortcut-listen), not our bug.

@@ -53,3 +53,10 @@ Not for me to build, parking them here so we don't forget:
   No jailbreaks, no canned weaponized exploits against third-party live contracts, and
   the ownership-proof gate ships as a hard requirement. Say the word if you want this
   revisited.
+
+## Update (web build)
+- Hugeicons: using the FREE set (@hugeicons/core-free-icons, ~14.9k icons, same API). Your Pro
+  key is stored; if you want Pro icon variants we can switch the import once I confirm their
+  private-registry .npmrc setup. Not urgent — free covers everything on screen.
+- Kobra components shipped without 'use client' on a few hook-using files; I added the directive.
+  Harmless, but flagging since we edited their generated files.
