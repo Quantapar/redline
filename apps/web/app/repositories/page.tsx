@@ -6,6 +6,7 @@ import { Icon } from '@/components/icon';
 import { GitBranchIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { timeAgo, shortSha } from '@/lib/format';
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,15 @@ export default async function RepositoriesPage() {
         <h1 className="text-xl font-semibold tracking-tight">Repositories</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">Every change to these repos is attacked on a throwaway fork before it can merge.</p>
       </div>
+      {repos.length === 0 ? (
+        <Empty className="rounded-xl border border-border py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Icon icon={GitBranchIcon} size={22} /></EmptyMedia>
+            <EmptyTitle>No repositories connected</EmptyTitle>
+            <EmptyDescription>Install the Redline GitHub App and pick your repos. Redline finds your contracts and test setup by itself.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
       <div className="grid gap-3">
         {repos.map((r) => (
           <Card key={r.id} className="flex items-center gap-4 p-4">
@@ -40,6 +50,7 @@ export default async function RepositoriesPage() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }

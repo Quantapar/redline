@@ -4,6 +4,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Icon } from '@/components/icon';
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
 import { Bug01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { WEAKNESS_LABEL, SEVERITY_HUE, CONSENSUS_LABEL, timeAgo } from '@/lib/format';
 
@@ -21,6 +22,15 @@ export default async function FindingsPage() {
           {red.length} red {red.length === 1 ? 'alarm' : 'alarms'}, each a theft reproduced by the council. The rest were searched and did not reproduce.
         </p>
       </div>
+      {findings.length === 0 ? (
+        <Empty className="rounded-xl border border-border py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Icon icon={Bug01Icon} size={22} /></EmptyMedia>
+            <EmptyTitle>No findings yet</EmptyTitle>
+            <EmptyDescription>Run a scan on a repository. A finding appears here only when the council reproduces a theft.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
       <Card className="overflow-hidden p-0">
         <Table>
           <TableHeader>
@@ -56,6 +66,7 @@ export default async function FindingsPage() {
           </TableBody>
         </Table>
       </Card>
+      )}
     </div>
   );
 }
