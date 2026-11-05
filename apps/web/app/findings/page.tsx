@@ -39,6 +39,7 @@ export default async function FindingsPage() {
               <TableHead>Repository</TableHead>
               <TableHead>Severity</TableHead>
               <TableHead>Council</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="pe-5 text-end">Seen</TableHead>
             </TableRow>
           </TableHeader>
@@ -59,6 +60,12 @@ export default async function FindingsPage() {
                   <TableCell className="text-[12px] text-muted-foreground">{repoName}</TableCell>
                   <TableCell>{finding.severity ? <StatusBadge hue={SEVERITY_HUE[finding.severity] ?? 'neutral'} size="sm">{finding.severity}</StatusBadge> : <span className="text-[12px] text-muted-foreground">—</span>}</TableCell>
                   <TableCell><StatusBadge hue={c.hue} size="sm">{c.label}</StatusBadge></TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center gap-1.5 text-[12px] ${finding.status === 'resolved' ? 'text-[var(--success)]' : finding.status === 'acknowledged' ? 'text-muted-foreground' : 'text-foreground'}`}>
+                      <span className={`size-1.5 rounded-full ${finding.status === 'resolved' ? 'bg-[var(--success)]' : finding.status === 'open' || finding.status === 'reopened' ? 'bg-destructive' : 'bg-muted-foreground'}`} />
+                      {finding.status[0]!.toUpperCase() + finding.status.slice(1)}
+                    </span>
+                  </TableCell>
                   <TableCell className="pe-5 text-end text-[12px] text-muted-foreground">{timeAgo(finding.createdAt)}</TableCell>
                 </TableRow>
               );

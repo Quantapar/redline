@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function OverviewPage() {
   const [stats, scans, findings] = await Promise.all([getStats(), listRecentScans(8), listAllFindings()]);
-  const red = findings.filter((f) => f.finding.isRed);
+  const red = findings.filter((f) => f.finding.isRed && f.finding.status !== 'resolved');
 
   return (
     <div className="mx-auto max-w-6xl space-y-7">
