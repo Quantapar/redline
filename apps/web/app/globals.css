@@ -378,6 +378,9 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
   ::selection {
     background-color: color-mix(in oklch, var(--brand) 30%, transparent);
   }
