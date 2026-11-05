@@ -48,3 +48,14 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
 - @redline/worker: BullMQ scan pipeline (prepare->static->hunt->verify->judge->post).
 - apps/web: Next.js dashboard with Kobra design system + hugeicons. apps/github-app: Probot.
 - packages/cli: `redline policy`. Then first subagent review + create private repo + push.
+
+## 2026-11-06 — hunters package
+- @redline/hunters: OGRouterClient (OpenAI-compatible, 0G router), SWARM roster (cheap->
+  strong->reasoning tiers mapped to real 0G model ids), defensive PoC-test prompt, lenient
+  candidate parser, huntSwarm orchestrator (cheap-first, escalate on miss, budget-capped,
+  stop-after-N per target). 10 tests pass.
+- LIVE smoke proven: qwen3-coder-flash via 0G found the reentrancy in a fixture vault,
+  wrote a 970-char forge PoC, flagged usedShortcuts=true, receipt captured. ~9.5s, 922 tok.
+- Fixes: (1) some coder models reject response_format json_object -> client retries plain,
+  parser already tolerant. (2) added 3x retry w/ quadratic backoff for connect timeouts/5xx/429
+  (hit a transient UND_ERR_CONNECT_TIMEOUT once). (3) scripts must be .mts for ESM TLA.
