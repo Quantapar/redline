@@ -1,5 +1,7 @@
 # Redline
 
+[![CI](https://github.com/Quantapar/redline/actions/workflows/ci.yml/badge.svg)](https://github.com/Quantapar/redline/actions/workflows/ci.yml)
+
 **Continuous security testing for smart contracts. Proof, not opinion.**
 
 Static analysis and AI scanners tell you a bug *might* be reachable. Redline proves
