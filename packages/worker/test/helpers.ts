@@ -9,6 +9,7 @@ export function testDb() {
 export async function resetDb(db: ReturnType<typeof createDb>['db']) {
   // order respects FKs
   await db.delete(schema.refereeRuns);
+  await db.delete(schema.recipes);
   await db.delete(schema.regressionTests);
   await db.delete(schema.fixes);
   await db.delete(schema.findings);
