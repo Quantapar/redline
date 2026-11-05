@@ -20,10 +20,11 @@ export async function resetDb(db: ReturnType<typeof createDb>['db']) {
 }
 
 export async function seedRepo(db: ReturnType<typeof createDb>['db']) {
-  const [account] = await db.insert(schema.accounts).values({ githubLogin: 'acme', githubId: 1 }).returning();
-  const [inst] = await db.insert(schema.installations).values({ accountId: account!.id, githubInstallationId: 11 }).returning();
+  const n = Math.floor(Math.random() * 1e9);
+  const [account] = await db.insert(schema.accounts).values({ githubLogin: `acme-${n}`, githubId: n }).returning();
+  const [inst] = await db.insert(schema.installations).values({ accountId: account!.id, githubInstallationId: n }).returning();
   const [repo] = await db.insert(schema.repositories).values({
-    installationId: inst!.id, githubRepoId: 111, fullName: 'acme/vault', defaultBranch: 'main',
+    installationId: inst!.id, githubRepoId: n, fullName: `acme-${n}/vault`, defaultBranch: 'main',
   }).returning();
   return repo!;
 }

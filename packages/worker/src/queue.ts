@@ -1,7 +1,7 @@
 import { Queue } from 'bullmq';
 import { createRedis } from './connection.js';
 
-export const SCAN_QUEUE = 'redline:scans';
+export const SCAN_QUEUE = 'redline-scans';
 
 export interface ScanJobData {
   scanId: string;

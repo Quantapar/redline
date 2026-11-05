@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 const a = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 export default defineConfig({
-  test: { testTimeout: 30000 },
+  test: { testTimeout: 30000, fileParallelism: false },
   resolve: {
     alias: {
       '@redline/shared': a('../shared/src/index.ts'),

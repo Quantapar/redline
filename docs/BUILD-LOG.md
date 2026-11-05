@@ -165,3 +165,11 @@ Addressed all 10 findings from the independent review subagent:
 9. LOW: Finding.refereeCount now counts valid (non-error) runs, matching the tally.
 10. LOW: live feed no longer closes the stream on a transient SSE error (native reconnect).
 - Totals: 76 tests across 9 packages, all typecheck clean. Production `next build` passes.
+
+## 2026-11-06 — real queue e2e
+- Added a true runtime test: BullMQ queue -> Worker -> pipeline -> Postgres, with Redis.
+  Enqueues a scan, the worker processes it, a red finding is persisted. Proves the queue path
+  the brief calls out ("the queue of the Redis"), not just the inline pipeline.
+- Renamed the queue 'redline:scans' -> 'redline-scans' (BullMQ forbids ':' in queue names).
+- seedRepo uses unique ids; worker test files run sequentially (shared test DB).
+- Totals: 78 tests across 9 packages, all green. Repo pushed to Quantapar/redline (private).
