@@ -102,6 +102,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   let redCount = 0;
 
   for (const { domain: c, dbId } of dbCandidates) {
+    try {
     const { runs, result } = await runCouncil(deps.engine, c, dispatch);
     for (const r of runs) {
       emit({ type: 'referee', scanId, candidate: c.targetContract, referee: r.refereeName, outcome: r.outcome, at: now() });
@@ -175,6 +176,10 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
       judgment,
       createdAt: findingRow.createdAt.toISOString(),
     });
+    } catch (err) {
+      // One bad candidate must not sink the whole scan; record and move on.
+      emit({ type: 'log', scanId, message: `candidate verification failed: ${String(err).slice(0, 160)}`, at: now() });
+    }
   }
 
   // ---- Judge + complete ----

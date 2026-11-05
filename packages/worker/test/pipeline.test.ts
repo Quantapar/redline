@@ -73,6 +73,22 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
     expect(regs).toHaveLength(0); // nothing saved, no alarm
   });
 
+  it('survives a candidate whose verification throws and still completes', async () => {
+    const repo = await seedRepo(handle.db);
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'boom' });
+    const throwingEngine = { run: async () => { throw new Error('referee exploded'); } };
+    const result = await runScan({
+      db: handle.db,
+      client: fakeClientFor('@redline-sim exploitable=true netWei=5000000000000000000 cheatDependent=false flaky=false'),
+      engine: throwingEngine,
+      prepare: async () => ({ targets: [target], policy: DEFAULT_POLICY }),
+    }, scan.id);
+    expect(result.candidateCount).toBe(1);
+    expect(result.redCount).toBe(0); // the throwing candidate was skipped, not fatal
+    const finalScan = (await handle.db.select().from(schema.scans))[0]!;
+    expect(finalScan.status).toBe('complete');
+  });
+
   it('completes with zero findings when the swarm proposes nothing', async () => {
     const repo = await seedRepo(handle.db);
     const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'ghi789' });

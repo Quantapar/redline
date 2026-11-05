@@ -233,3 +233,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - /api/health reports DB + Redis connectivity. Empty states on findings/repositories pages.
 - Fixed apps/* vitest alias paths (needed ../../packages, not ../).
 - Totals: 112 tests across 10 packages, all green; production build passes.
+
+## 2026-11-06 — pipeline resilience + README + a11y + web encryption config
+- Pipeline wraps each candidate's verification in try/catch: one failure is logged and skipped,
+  never sinking the whole scan. Test with a throwing engine confirms the scan still completes.
+- Decorative icons are aria-hidden. README expanded with the full feature set + CLI quickstart.
+- apps/web/.env.local needs ENCRYPTION_KEY so the inline demo-scan path encrypts saved attacks too.
+- Totals: 113 tests across 10 packages, all green.
