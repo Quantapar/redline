@@ -313,3 +313,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Verified from code: Kobra inputs already use 16px on mobile (no iOS zoom); reduced-motion is
   handled in globals; the app is dark-only so there is no theme flash; no secrets or stray debug
   logs in source. Device checks (real iPhone/Android, screen reader order) remain for the user.
+
+## 2026-11-06 — mobile navigation (prep-for-prod blocker)
+- Below md the sidebar was hidden with no menu, so mobile users could not navigate. Added a menu
+  button that opens a Sheet drawer with the same nav, closing on selection. The desktop sidebar is
+  unchanged. (The in-tool browser renders a fixed viewport, so verify the drawer on a real phone.)
