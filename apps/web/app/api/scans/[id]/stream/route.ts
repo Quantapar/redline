@@ -7,6 +7,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const channel = channelFor(id);
   const sub = subscriber();
+  let hb: ReturnType<typeof setInterval> | undefined;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -20,6 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         try {
           const ev = JSON.parse(message) as { type: string };
           if (ev.type === 'done') {
+            if (hb) clearInterval(hb);
             controller.close();
             void sub.quit();
           }
@@ -29,7 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       });
 
       // heartbeat so the connection is not reaped
-      const hb = setInterval(() => {
+      hb = setInterval(() => {
         try {
           controller.enqueue(enc.encode(`: ping\n\n`));
         } catch {
@@ -38,6 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       }, 15000);
     },
     cancel() {
+      if (hb) clearInterval(hb);
       void sub.quit();
     },
   });

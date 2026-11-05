@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq, schema } from '@redline/db';
 import { db } from '@/lib/db';
+import { isUuid } from '@/lib/validate';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,7 @@ export const runtime = 'nodejs';
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: 'invalid id' }, { status: 400 });
   const d = db();
   const [finding] = await d.select().from(schema.findings).where(eq(schema.findings.id, id)).limit(1);
   if (!finding) return NextResponse.json({ error: 'finding not found' }, { status: 404 });

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { and, desc, eq, schema } from '@redline/db';
+import { and, desc, eq, ne, sql, schema } from '@redline/db';
 import { canDeploy, buildAttestation } from '@redline/gates';
 import { db } from '@/lib/db';
 
@@ -37,9 +37,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ allowed: false, reason: 'this version was never checked by Redline' }, { status: 200 });
   }
 
+  // Count UNRESOLVED red findings for this scan now, so resolving a false positive
+  // unblocks the deploy (the scan's redFindingCount is a frozen snapshot).
+  const [open] = await d
+    .select({ n: sql<number>`count(*)` })
+    .from(schema.findings)
+    .where(and(eq(schema.findings.scanId, scan.id), eq(schema.findings.isRed, true), ne(schema.findings.status, 'resolved')));
+  const unresolvedRed = Number(open?.n ?? 0);
+
   const attestation = buildAttestation({
     versionHash: scan.commitSha,
-    redFindingCount: scan.redFindingCount,
+    redFindingCount: unresolvedRed,
     councilComplete: true,
     issuer: COUNCIL_KEY,
   });

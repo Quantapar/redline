@@ -331,3 +331,22 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Extracted and tested parseSlitherJson and parseAderynJson.
 - NOTE: GitHub push endpoint returned a server-side "fatal error in commit_refs" for this repo for a
   stretch; commits are safe locally and a background retry pushes them when it clears.
+
+## 2026-11-06 — second independent review fixes (10 findings)
+1. HIGH cancel did nothing + reverted: pipeline now checks cancellation after hunt and before
+   complete, stops and keeps 'cancelled' (the post-hunt status write was overwriting it); UI honors
+   the cancel response. New deterministic test.
+2. HIGH /api/watch mass trigger: guarded by requireAdmin (REDLINE_ADMIN_TOKEN; open in dev).
+3. HIGH unauth status mutation: admin-guard infra added; user-facing mutations need session auth
+   (GitHub OAuth) — a roadmap item, documented.
+4. HIGH value-at-risk tripled: the dedup set was dead; now counts one moved run per finding
+   (351 ETH -> 108.5 ETH on the seed).
+5. MED encryption defeated: candidates.forge_test was plaintext; now encrypted at rest and
+   decrypted server-side in getFindingDetail (decrypt now has a caller; redaction unaffected).
+6. MED value-at-risk ignored status: now excludes resolved findings.
+7. MED triage vs deploy disconnected: deploy-check counts LIVE unresolved red findings, so resolving
+   a false positive unblocks the deploy (verified).
+8. MED 500 on bad id: id routes validate the uuid and return 400 (verified).
+9. LOW XFF-spoofable/in-memory rate limit: documented; the admin guard mitigates the worst case.
+10. LOW SSE heartbeat leak: cleared on cancel and done.
+- Totals: 163 tests, all green; production build passes.

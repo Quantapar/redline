@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { createScan, schema } from '@redline/db';
+import { createScan, setScanStatus, schema } from '@redline/db';
 import { SimulationRefereeEngine } from '@redline/engine';
 import { FakeRouterClient, type HuntTarget } from '@redline/hunters';
 import { DEFAULT_POLICY } from '@redline/shared';
@@ -87,6 +87,26 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
     expect(result.redCount).toBe(0); // the throwing candidate was skipped, not fatal
     const finalScan = (await handle.db.select().from(schema.scans))[0]!;
     expect(finalScan.status).toBe('complete');
+  });
+
+  it('stops and stays cancelled when cancelled mid-run', async () => {
+    const repo = await seedRepo(handle.db);
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'cancelme' });
+    // a client that cancels the scan (awaited) while it is being hunted, so the
+    // post-hunt cancellation check deterministically sees it.
+    const cancelling = {
+      async chat(req: { model: string }) {
+        await setScanStatus(handle.db, scan.id, 'cancelled');
+        return { content: JSON.stringify({ candidates: [] }), model: req.model, usage: null, receipt: null };
+      },
+    };
+    const result = await runScan({
+      db: handle.db, client: cancelling, engine: new SimulationRefereeEngine(),
+      prepare: async () => ({ targets: [target], policy: DEFAULT_POLICY }),
+    }, scan.id);
+    expect(result.redCount).toBe(0);
+    const finalScan = (await handle.db.select().from(schema.scans))[0]!;
+    expect(finalScan.status).toBe('cancelled'); // NOT overwritten to complete
   });
 
   it('completes with zero findings when the swarm proposes nothing', async () => {

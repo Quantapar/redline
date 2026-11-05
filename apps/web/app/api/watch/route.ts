@@ -3,6 +3,7 @@ import { triggerWatchMode, createScanQueue, enqueueScan } from '@redline/worker'
 import { WeaknessClass, Severity } from '@redline/shared';
 import { db } from '@/lib/db';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
+import { requireAdmin } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,8 @@ export const runtime = 'nodejs';
  * every repo.  POST { weaknessClass, title, template, chain?, severity? }.
  */
 export async function POST(req: Request) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
   const rl = rateLimit(`watch:${clientKey(req)}`, 5, 60_000);
   if (!rl.ok) return NextResponse.json({ error: 'rate limited' }, { status: 429 });
 

@@ -117,10 +117,16 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
               size="xs"
               variant="ghost"
               onClick={async () => {
-                await fetch(`/api/scans/${scanId}/cancel`, { method: 'POST' }).catch(() => {});
-                setStatus('cancelled');
-                setDone(true);
-                setTimeout(() => router.refresh(), 400);
+                try {
+                  const res = await fetch(`/api/scans/${scanId}/cancel`, { method: 'POST' });
+                  if (res.ok) {
+                    setStatus('cancelled');
+                    setDone(true);
+                    setTimeout(() => router.refresh(), 400);
+                  }
+                } catch {
+                  /* leave the scan running; the user can retry */
+                }
               }}
             >
               <Icon icon={Cancel01Icon} size={13} /> Cancel

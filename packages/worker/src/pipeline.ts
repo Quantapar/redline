@@ -69,6 +69,20 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   const scan = await getScan(db, scanId);
   if (!scan) throw new Error(`scan ${scanId} not found`);
 
+  // Re-read the scan's status to see if it was cancelled mid-run.
+  const isCancelled = async (): Promise<boolean> => {
+    const cur = await getScan(db, scanId);
+    return cur?.status === 'cancelled';
+  };
+  const findings: Finding[] = [];
+  let redCount = 0;
+  let candidates: Candidate[] = [];
+  const stopCancelled = async (): Promise<ScanResult> => {
+    await setScanStatus(db, scanId, 'cancelled', { finishedAt: new Date(), candidateCount: candidates.length });
+    emit({ type: 'done', scanId, redCount, at: now() });
+    return { scanId, candidateCount: candidates.length, findings, redCount };
+  };
+
   await setStatus('preparing', { startedAt: new Date() });
   const { targets, policy } = await deps.prepare(scan);
   const sourceByContract = new Map(targets.map((t) => [t.contractName, t.source]));
@@ -78,7 +92,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   await setStatus('hunting');
   const budget = new BudgetGuard(scan.budgetCapCents, scan.spentCents);
   const recipes = (await listRecipes(db)).map((r) => ({ weaknessClass: r.weaknessClass, title: r.title, template: r.template }));
-  const candidates = await huntSwarm({
+  candidates = await huntSwarm({
     client: deps.client,
     scanId,
     targets,
@@ -102,21 +116,20 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
       contractSource: sourceByContract.get(c.targetContract) ?? null,
       targetFunction: c.targetFunction,
       summary: c.summary,
-      forgeTest: c.forgeTest,
+      forgeTest: encrypt(c.forgeTest), // encrypted at rest
       steps: c.steps as object,
       claimedValueWei: c.claimedValueWei,
       usedShortcuts: c.usedShortcuts,
     });
     dbCandidates.push({ domain: c, dbId: row.id });
   }
+  if (await isCancelled()) return await stopCancelled();
   await setScanStatus(db, scanId, 'hunting', { candidateCount: candidates.length, spentCents: budget.spentCents });
 
   // ---- Verify (council) ----
   await setStatus('verifying');
   const dispatch: CouncilDispatch = deps.council ?? DEFAULT_COUNCIL_DISPATCH;
-  const findings: Finding[] = [];
   const priorKeys = new Set<string>();
-  let redCount = 0;
 
   for (const { domain: c, dbId } of dbCandidates) {
     try {
@@ -201,6 +214,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   }
 
   // ---- Judge + complete ----
+  if (await isCancelled()) return await stopCancelled();
   await setStatus('judging');
   await setScanStatus(db, scanId, 'complete', {
     finishedAt: new Date(),

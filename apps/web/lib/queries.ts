@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from '@redline/db';
+import { and, desc, eq, ne, sql, decrypt } from '@redline/db';
 import { schema } from '@redline/db';
 import { db } from './db';
 
@@ -9,23 +9,29 @@ export async function getStats() {
   const [red] = await d.select({ n: sql<number>`count(*)` }).from(schema.findings).where(eq(schema.findings.isRed, true));
   const [reg] = await d.select({ n: sql<number>`count(*)` }).from(schema.regressionTests);
 
-  // value at risk: sum of value moved across moved referee runs of unresolved red findings
+  // value at risk: sum ONCE per unresolved red finding (take one moved referee run each).
   const movedRuns = await d
-    .select({ deltas: schema.refereeRuns.deltas })
+    .select({ findingId: schema.findings.id, deltas: schema.refereeRuns.deltas })
     .from(schema.refereeRuns)
     .innerJoin(schema.findings, eq(schema.refereeRuns.candidateId, schema.findings.candidateId))
-    .where(and(eq(schema.findings.isRed, true), eq(schema.refereeRuns.outcome, 'moved')));
-  // de-duplicate: one representative moved run per finding is enough; sum conservatively per finding
+    .where(
+      and(
+        eq(schema.findings.isRed, true),
+        ne(schema.findings.status, 'resolved'),
+        eq(schema.refereeRuns.outcome, 'moved'),
+      ),
+    );
   let atRisk = 0n;
-  const seen = new Set<string>();
+  const counted = new Set<string>();
   for (const r of movedRuns) {
+    if (counted.has(r.findingId)) continue; // one moved run per finding
+    counted.add(r.findingId);
     try {
       for (const dlt of (r.deltas as { token: string; attackerNetOfGas: string }[]) ?? []) {
         if (dlt.token === 'native') { atRisk += BigInt(dlt.attackerNetOfGas); break; }
       }
     } catch { /* skip */ }
   }
-  void seen;
 
   return {
     repos: Number(repos?.n ?? 0),
@@ -82,7 +88,8 @@ export async function getFindingDetail(findingId: string) {
   const d = db();
   const [finding] = await d.select().from(schema.findings).where(eq(schema.findings.id, findingId)).limit(1);
   if (!finding) return null;
-  const [candidate] = await d.select().from(schema.candidates).where(eq(schema.candidates.id, finding.candidateId)).limit(1);
+  const [candidateRow] = await d.select().from(schema.candidates).where(eq(schema.candidates.id, finding.candidateId)).limit(1);
+  const candidate = candidateRow ? { ...candidateRow, forgeTest: decrypt(candidateRow.forgeTest) } : undefined;
   const runs = candidate
     ? await d.select().from(schema.refereeRuns).where(eq(schema.refereeRuns.candidateId, candidate.id))
     : [];
