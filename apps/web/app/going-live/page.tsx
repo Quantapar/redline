@@ -48,6 +48,11 @@ export default async function GoingLivePage() {
         </div>
       </Card>
 
+      <Card className="p-4">
+        <div className="text-[12px] text-muted-foreground">Gate a deploy in your pipeline — it exits non-zero on a red or unchecked version:</div>
+        <pre className="mt-2 overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-[12px] text-foreground">redline verify-deploy --repo acme-defi/vault-core --version $GIT_SHA || exit 1</pre>
+      </Card>
+
       <div className="grid gap-3">
         {rows.map(({ repo, decision, sha }) => (
           <Card key={repo.id} className="flex flex-row items-center gap-4 p-4">
