@@ -133,3 +133,15 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
 - Going-live gates scaffolding (ENS deploy lock, Safe guard) — partner ENS.
 - Subagent code review of the uncommitted/whole diff -> create PRIVATE GitHub repo (Quantapar)
   -> push. Secret-scan history before any push.
+
+## 2026-11-06 — going-live gates package
+- packages/gates: pure, tested deploy-lock. canDeploy() allows a version only when the
+  approved-version record is a council attestation FOR THAT EXACT version, issued by a
+  council key, council-complete, and green (0 reproduced). safeGuardDecision reuses it.
+  councilMayWrite enforces the ENS EAC write permission. 8 tests.
+- On-chain wiring (ENS text record read/write on Sepolia, Safe Guard contract) is the
+  integration point; verification logic is pure so it tests without a chain.
+- Totals: 73 tests across 9 packages.
+- Repo github.com/Quantapar/redline created (private). Secret scan of history: clean
+  (only .env.example tracked, no .npmrc, no key fragments in any commit). Awaiting the
+  independent review before first push.
