@@ -3,7 +3,7 @@ import { getStats, listRecentScans, listAllFindings } from '@/lib/queries';
 import { StatTile } from '@/components/stat-tile';
 import { StatusBadge } from '@/components/status-badge';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { RunScanButton } from '@/components/run-scan-button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Icon } from '@/components/icon';
 import {
@@ -26,10 +26,7 @@ export default async function OverviewPage() {
             An alarm only when the money provably moves. Everything below is a reproduced theft, not a guess.
           </p>
         </div>
-        <Button variant="default" size="default" nativeButton={false} render={<Link href="/repositories" />}>
-          <Icon icon={Target01Icon} size={16} />
-          Run a scan
-        </Button>
+        <RunScanButton />
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

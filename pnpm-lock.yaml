@@ -47,18 +47,27 @@ importers:
       '@redline/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@redline/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@redline/hunters':
         specifier: workspace:*
         version: link:../../packages/hunters
       '@redline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@redline/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
       clsx:
         specifier: 2.1.1
         version: 2.1.1
+      ioredis:
+        specifier: 5.4.2
+        version: 5.4.2
       lucide-react:
         specifier: 0.469.0
         version: 0.469.0(react@19.0.0)

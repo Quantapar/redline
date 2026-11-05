@@ -105,3 +105,16 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
   - Dev webpack cache ENOENT races when rm -rf .next hits a live server -> disabled dev cache +
     always kill ALL :3000 PIDs before restart.
 - Hydration warning on <body> is a browser extension (cz-shortcut-listen), not our bug.
+
+## 2026-11-06 — live scan room + remaining nav pages (demo spine complete)
+- Pages: Findings list, Repositories, Security policy (explains the plain-English policy +
+  `redline policy` command), Referee council (two-room explainer + verdict distribution),
+  Scan room (/scans/[id]).
+- LIVE scan room: SSE at /api/scans/[id]/stream (Redis pub/sub, channel redline:scan:<id>),
+  /api/scans/run creates a scan and runs the real pipeline fire-and-forget with a paced
+  sim engine + fake client, publishing events to Redis. LiveScanFeed (EventSource) renders a
+  stage timeline + streaming log; a 2s status poll is the fallback for missed events.
+- PROVEN live in browser: Run a scan -> watch Prepare/Hunt/Verify/Judge stream, 3 referees
+  "moved", consensus "reproduced", finding appears. Full red->proof->fix loop is interactive.
+- Race fix: Redis pub/sub has no replay, and a sim scan finishes in ~2.5s before the client
+  SSE connects -> added a 1.5s startup delay before the run emits + the status-poll fallback.
