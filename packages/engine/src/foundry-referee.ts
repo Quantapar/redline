@@ -6,7 +6,7 @@ import { stripForReferee } from './cheatcodes.js';
 import { attackerGained } from '@redline/shared';
 import { detectFoundry, forgeTest } from './foundry.js';
 
-function wrapTest(candidate: Candidate, cleaned: string, contractName: string): string {
+export function wrapTest(candidate: Candidate, cleaned: string, contractName: string): string {
   if (/contract\s+\w+\s+is\s+Test/.test(cleaned) || /contract\s+\w+Test/.test(cleaned)) return cleaned;
   // Wrap a bare function/body into a forge-std test contract.
   const body = /function\s+test/i.test(cleaned) ? cleaned : `function test_Redline() public {\n${cleaned}\n}`;
@@ -19,7 +19,7 @@ ${body}
 }
 
 /** Parse an optional net-value marker emitted by the attack: console.log("REDLINE_NET", x). */
-function parseNet(raw: string): string | null {
+export function parseNet(raw: string): string | null {
   const m = raw.match(/REDLINE_NET[^\d-]*(-?\d+)/);
   return m ? m[1]! : null;
 }
