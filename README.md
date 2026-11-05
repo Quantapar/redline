@@ -97,6 +97,9 @@ redline policy add "No function that moves money may run without a permission ch
 
 # hunt + council over a local Solidity project (needs OG_ROUTER_API_KEY; real proof needs Foundry)
 redline scan ./my-contracts
+
+# gate a deploy: exits non-zero if the version is red or was never checked
+redline verify-deploy --repo acme-defi/vault-core --version "$GIT_SHA" || exit 1
 ```
 
 See `docs/DEMO.md` for the two-minute demo, `docs/SETUP.md` to run it, `docs/MCP.md` for the
