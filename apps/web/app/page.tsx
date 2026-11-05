@@ -9,7 +9,7 @@ import { Icon } from '@/components/icon';
 import {
   FolderLibraryIcon, Target01Icon, Bug01Icon, Shield01Icon, ArrowRight01Icon, GitBranchIcon,
 } from '@hugeicons/core-free-icons';
-import { timeAgo, shortSha, CONSENSUS_LABEL, SEVERITY_HUE, WEAKNESS_LABEL, SCAN_STATUS_LABEL } from '@/lib/format';
+import { timeAgo, shortSha, formatEth, CONSENSUS_LABEL, SEVERITY_HUE, WEAKNESS_LABEL, SCAN_STATUS_LABEL } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +32,7 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Repositories watched" value={stats.repos} icon={FolderLibraryIcon} />
         <StatTile label="Scans run" value={stats.scans} icon={Target01Icon} />
-        <StatTile label="Red findings" value={stats.redFindings} icon={Bug01Icon} accent="error" hint="reproduced by the council" />
+        <StatTile label="Red findings" value={stats.redFindings} icon={Bug01Icon} accent="error" hint={`${formatEth(stats.valueAtRiskWei)} proven at risk`} />
         <StatTile label="Forever-tests" value={stats.regressionTests} icon={Shield01Icon} hint="re-run on every change" />
       </div>
 

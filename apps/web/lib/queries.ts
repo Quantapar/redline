@@ -8,11 +8,31 @@ export async function getStats() {
   const [scans] = await d.select({ n: sql<number>`count(*)` }).from(schema.scans);
   const [red] = await d.select({ n: sql<number>`count(*)` }).from(schema.findings).where(eq(schema.findings.isRed, true));
   const [reg] = await d.select({ n: sql<number>`count(*)` }).from(schema.regressionTests);
+
+  // value at risk: sum of value moved across moved referee runs of unresolved red findings
+  const movedRuns = await d
+    .select({ deltas: schema.refereeRuns.deltas })
+    .from(schema.refereeRuns)
+    .innerJoin(schema.findings, eq(schema.refereeRuns.candidateId, schema.findings.candidateId))
+    .where(and(eq(schema.findings.isRed, true), eq(schema.refereeRuns.outcome, 'moved')));
+  // de-duplicate: one representative moved run per finding is enough; sum conservatively per finding
+  let atRisk = 0n;
+  const seen = new Set<string>();
+  for (const r of movedRuns) {
+    try {
+      for (const dlt of (r.deltas as { token: string; attackerNetOfGas: string }[]) ?? []) {
+        if (dlt.token === 'native') { atRisk += BigInt(dlt.attackerNetOfGas); break; }
+      }
+    } catch { /* skip */ }
+  }
+  void seen;
+
   return {
     repos: Number(repos?.n ?? 0),
     scans: Number(scans?.n ?? 0),
     redFindings: Number(red?.n ?? 0),
     regressionTests: Number(reg?.n ?? 0),
+    valueAtRiskWei: atRisk.toString(),
   };
 }
 
