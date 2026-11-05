@@ -275,3 +275,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - candidates.model_receipt stores the provider receipt proving which model found a candidate
   (the 0G receipt). The hunt captures it, the pipeline persists it, and the public proof includes
   it as the discovery provenance.
+
+## 2026-11-06 — more coverage (foundry helpers, web utils, cancel, receipt, triage, proof)
+- Foundry referee helpers (parseNet, wrapTest) tested. Web pure utils (format, redact, referee-value)
+  tested. Scan cancellation, model-receipt provenance, finding triage, public-proof export all added.
+- Totals: 140 tests across 10 packages, all green; production build passes.
