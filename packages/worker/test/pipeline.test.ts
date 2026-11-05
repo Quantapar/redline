@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { createScan, setScanStatus, schema } from '@redline/db';
+import { createScan, setScanStatus, decrypt, schema } from '@redline/db';
 import { SimulationRefereeEngine } from '@redline/engine';
 import { FakeRouterClient, type HuntTarget } from '@redline/hunters';
 import { DEFAULT_POLICY } from '@redline/shared';
@@ -59,6 +59,18 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
     expect(regs).toHaveLength(1); // the forever-test was saved
     const runs = await handle.db.select().from(schema.refereeRuns);
     expect(runs.length).toBe(3); // a full council
+  });
+
+  it('stores the candidate attack encrypted at rest but recoverable', async () => {
+    process.env.ENCRYPTION_KEY = require('node:crypto').randomBytes(32).toString('base64');
+    const repo = await seedRepo(handle.db);
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'enc1' });
+    await runScan(deps(fakeClientFor('@redline-sim exploitable=true netWei=5000000000000000000 cheatDependent=false flaky=false')), scan.id);
+    const [cand] = await handle.db.select().from(schema.candidates);
+    expect(cand!.forgeTest.startsWith('enc:v1:')).toBe(true); // not plaintext on disk
+    expect(cand!.forgeTest).not.toContain('testExploit');
+    expect(decrypt(cand!.forgeTest)).toContain('testExploit'); // recoverable with the key
+    delete process.env.ENCRYPTION_KEY;
   });
 
   it('does NOT raise an alarm for a cheat-dependent exploit (two-room defense)', async () => {
