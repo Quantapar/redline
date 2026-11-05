@@ -122,3 +122,12 @@ export async function insertRecipe(db: Database, r: typeof s.recipes.$inferInser
   const [row] = await db.insert(s.recipes).values(r).returning();
   return row!;
 }
+
+export async function setFindingStatus(
+  db: Database,
+  findingId: string,
+  status: typeof s.findingStatusEnum.enumValues[number],
+) {
+  const [row] = await db.update(s.findings).set({ status }).where(eq(s.findings.id, findingId)).returning();
+  return row ?? null;
+}

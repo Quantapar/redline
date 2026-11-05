@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getFindingDetail } from '@/lib/queries';
 import { CouncilPanel } from '@/components/council-panel';
 import { FixItButton } from '@/components/fix-it-button';
+import { FindingStatusControl } from '@/components/finding-status-control';
 import { StatusBadge } from '@/components/status-badge';
 import { LockedAttack } from '@/components/locked-attack';
 import { redactAttack } from '@/lib/redact';
@@ -81,6 +82,10 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
             <Detail icon={Coins01Icon} label="Value moved" value={formatEth(atRisk)} accent />
             <Detail icon={AiBrain01Icon} label="Found by" value={candidate?.hunterModel ?? '—'} mono />
             <Detail icon={Shield01Icon} label="Forever-test" value={finding.isRed ? 'Saved' : 'Not saved'} />
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4">
+            <FindingStatusControl findingId={finding.id} status={finding.status} />
           </div>
         </aside>
       </div>

@@ -51,5 +51,8 @@ export type RefereeOutcome = z.infer<typeof RefereeOutcome>;
  * - not-reproduced: referees agree value did not move -> NO alarm
  * - inconclusive: not enough valid runs to decide
  */
+export const FindingStatus = z.enum(['open', 'acknowledged', 'resolved', 'reopened']);
+export type FindingStatus = z.infer<typeof FindingStatus>;
+
 export const Consensus = z.enum(['reproduced', 'fragile', 'not-reproduced', 'inconclusive']);
 export type Consensus = z.infer<typeof Consensus>;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Severity, WeaknessClass, Consensus } from './enums.js';
+import { Severity, WeaknessClass, Consensus, FindingStatus } from './enums.js';
 
 /**
  * The judgment panel's assessment. It can rank and explain, but it can NEVER
@@ -30,6 +30,7 @@ export const Finding = z.object({
   plainSentence: z.string(),        // the one plain sentence shown on the change
   consensus: Consensus,
   isRed: z.boolean(),               // derived: consensus === 'reproduced'
+  status: FindingStatus.default('open'),
   refereeRunIds: z.array(z.string()),
   agreementCount: z.number().int(),
   refereeCount: z.number().int(),

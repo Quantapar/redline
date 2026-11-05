@@ -168,6 +168,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
       plainSentence: c.summary,
       consensus: result.consensus,
       isRed,
+      status: findingRow.status,
       refereeRunIds: [],
       agreementCount: result.agreementCount,
       refereeCount: result.validCount,

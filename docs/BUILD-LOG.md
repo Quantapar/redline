@@ -240,3 +240,9 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Decorative icons are aria-hidden. README expanded with the full feature set + CLI quickstart.
 - apps/web/.env.local needs ENCRYPTION_KEY so the inline demo-scan path encrypts saved attacks too.
 - Totals: 113 tests across 10 packages, all green.
+
+## 2026-11-06 — finding triage workflow
+- findings.status enum (open/acknowledged/resolved/reopened). setFindingStatus query, POST
+  /api/findings/[id]/status route (validated), and a status control on the finding page.
+  Teams can acknowledge, resolve, and reopen findings. 2 tests + live-verified.
+- Totals: 115 tests across 10 packages, all green.

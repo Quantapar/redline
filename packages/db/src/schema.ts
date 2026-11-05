@@ -10,6 +10,7 @@ export const scanStatusEnum = pgEnum('scan_status', [
 export const scanTriggerEnum = pgEnum('scan_trigger', ['first-scan', 'push', 'pull-request', 'watch-mode', 'manual']);
 export const refereeOutcomeEnum = pgEnum('referee_outcome', ['moved', 'did-not-move', 'error', 'build-failed']);
 export const consensusEnum = pgEnum('consensus', ['reproduced', 'fragile', 'not-reproduced', 'inconclusive']);
+export const findingStatusEnum = pgEnum('finding_status', ['open', 'acknowledged', 'resolved', 'reopened']);
 
 // ---- Accounts & installations ----
 export const accounts = pgTable('accounts', {
@@ -105,6 +106,7 @@ export const findings = pgTable('findings', {
   plainSentence: text('plain_sentence').notNull(),
   consensus: consensusEnum('consensus').notNull(),
   isRed: boolean('is_red').notNull().default(false),
+  status: findingStatusEnum('status').notNull().default('open'),
   agreementCount: integer('agreement_count').notNull().default(0),
   refereeCount: integer('referee_count').notNull().default(0),
   severity: severityEnum('severity'),
