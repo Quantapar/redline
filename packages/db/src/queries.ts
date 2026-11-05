@@ -108,3 +108,17 @@ export async function getScanCompletionContext(db: Database, scanId: string) {
     findings,
   };
 }
+
+// ---- Recipe library (shared, public) ----
+export async function listRecipes(db: Database) {
+  return db.select().from(s.recipes).orderBy(s.recipes.weaknessClass);
+}
+
+export async function recipesByClass(db: Database, weaknessClass: string, limit = 5) {
+  return db.select().from(s.recipes).where(eq(s.recipes.weaknessClass, weaknessClass)).limit(limit);
+}
+
+export async function insertRecipe(db: Database, r: typeof s.recipes.$inferInsert) {
+  const [row] = await db.insert(s.recipes).values(r).returning();
+  return row!;
+}

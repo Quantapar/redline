@@ -92,6 +92,18 @@ await scanRepo(repos[2]!.id, 'c7d8e9f', GOV, 'Governance', {
   Governance: { wc: 'logic-error', fn: 'vote', summary: 'candidate', directive: '@redline-sim exploitable=false netWei=0 cheatDependent=false flaky=false' },
 });
 
+// --- seed the shared attack-recipe library ---
+await db.delete(schema.recipes);
+await db.insert(schema.recipes).values([
+  { weaknessClass: 'reentrancy', chain: 'ethereum', severity: 'critical', labels: ['external-call', 'state-after'], title: 'Single-function reentrancy', template: 'Call the withdrawing function from a receive() that re-enters before the balance is zeroed.', source: 'seed' },
+  { weaknessClass: 'access-control', chain: 'ethereum', severity: 'critical', labels: ['missing-modifier'], title: 'Unguarded privileged function', template: 'Call a mint/withdraw/upgrade function that lacks an owner/role check from a non-owner account.', source: 'seed' },
+  { weaknessClass: 'price-oracle-manipulation', chain: 'ethereum', severity: 'critical', labels: ['spot-price', 'amm'], title: 'Spot-price oracle manipulation', template: 'Move an AMM pool price within one transaction, then call the victim that reads spot price.', source: 'seed' },
+  { weaknessClass: 'flash-loan', chain: 'ethereum', severity: 'high', labels: ['flash-loan'], title: 'Flash-loan funded attack', template: 'Borrow a large amount via flash loan, manipulate state, extract value, repay in the same tx.', source: 'seed' },
+  { weaknessClass: 'unchecked-external-call', chain: 'ethereum', severity: 'high', labels: ['return-value'], title: 'Unchecked call return', template: 'Trigger a low-level call whose failure is ignored, leaving the contract in an inconsistent state.', source: 'seed' },
+  { weaknessClass: 'signature-replay', chain: 'ethereum', severity: 'high', labels: ['nonce', 'permit'], title: 'Signature replay', template: 'Replay a signed message that lacks a nonce or chainId binding on a second call.', source: 'watch-mode' },
+]);
+console.log('seeded 6 attack recipes');
+
 const findings = await db.select().from(schema.findings);
 console.log(`\nseeded: ${repos.length} repos, ${findings.length} findings, ${findings.filter((f)=>f.isRed).length} red`);
 await close();

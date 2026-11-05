@@ -10,6 +10,7 @@ import {
   Bug01Icon,
   FolderLibraryIcon,
   JusticeScale01Icon,
+  Target01Icon as RecipeIcon,
   Shield01Icon,
   LockedIcon,
   Settings01Icon,
@@ -21,6 +22,7 @@ const NAV = [
   { href: '/repositories', label: 'Repositories', icon: FolderLibraryIcon },
   { href: '/findings', label: 'Findings', icon: Bug01Icon },
   { href: '/council', label: 'Referee council', icon: JusticeScale01Icon },
+  { href: '/recipes', label: 'Attack recipes', icon: RecipeIcon },
   { href: '/policy', label: 'Security policy', icon: Shield01Icon },
   { href: '/going-live', label: 'Going live', icon: LockedIcon },
 ];

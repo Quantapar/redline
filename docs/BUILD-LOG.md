@@ -205,3 +205,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   clean -> deploy allowed, a reproduced finding -> deploy blocked with the reason. Shows the
   ENS-controlled approved-version record (redline.council.eth). Added to the sidebar nav.
 - Totals: 100 tests; the gates feature is now visible and functional in the product.
+
+## 2026-11-06 — attack-recipe library (Arkiv feature)
+- Seeded a public recipe library (6 patterns: reentrancy, access-control, oracle, flash-loan,
+  unchecked-call, signature-replay). The pipeline fetches recipes and the swarm includes them as
+  hints in the hunt prompt on every scan. New /recipes page surfaces the library.
+- Tests: recipe hints appear in the prompt when provided, omitted otherwise.
+- Totals: 102 tests across 9 packages, all green.

@@ -3,7 +3,7 @@ import {
 } from '@redline/shared';
 import {
   type Database, setScanStatus, getScan, insertCandidate, insertRefereeRuns,
-  insertFinding, insertRegressionTest, schema,
+  insertFinding, insertRegressionTest, listRecipes, schema,
 } from '@redline/db';
 import { runCouncil, type RefereeEngine, type CouncilDispatch } from '@redline/engine';
 import { huntSwarm, type RouterClient, type HuntTarget } from '@redline/hunters';
@@ -61,12 +61,14 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   // ---- Hunt ----
   await setStatus('hunting');
   const budget = new BudgetGuard(scan.budgetCapCents, scan.spentCents);
+  const recipes = (await listRecipes(db)).map((r) => ({ weaknessClass: r.weaknessClass, title: r.title, template: r.template }));
   const candidates = await huntSwarm({
     client: deps.client,
     scanId,
     targets,
     policy,
     budget,
+    recipes,
     onProgress: (message) => emit({ type: 'log', scanId, message, at: now() }),
     onCandidate: (c) =>
       emit({ type: 'candidate', scanId, contract: c.targetContract, weaknessClass: c.weaknessClass, model: c.hunterModel, at: now() }),

@@ -40,3 +40,22 @@ describe('candidate parsing', () => {
     expect(estimateCostCents(resp('{}'), 5)).toBeGreaterThanOrEqual(1);
   });
 });
+
+import { buildHuntMessages } from '../src/prompts.js';
+import { WeaknessClass, DEFAULT_POLICY } from '@redline/shared';
+
+describe('recipe hints in the hunt prompt', () => {
+  const target = { contractName: 'Vault', filePath: 'src/Vault.sol', source: 'contract Vault {}', changedFunctions: [], analyzerNotes: [] };
+  it('includes recipe titles when provided', () => {
+    const msgs = buildHuntMessages(target, WeaknessClass.options, DEFAULT_POLICY, [
+      { weaknessClass: 'reentrancy', title: 'Single-function reentrancy', template: 'Re-enter before the balance is zeroed.' },
+    ]);
+    const user = msgs.find((m) => m.role === 'user')!.content;
+    expect(user).toContain('Single-function reentrancy');
+    expect(user).toContain('recipe library');
+  });
+  it('omits the recipe section when none are provided', () => {
+    const msgs = buildHuntMessages(target, WeaknessClass.options, DEFAULT_POLICY, []);
+    expect(msgs.find((m) => m.role === 'user')!.content).not.toContain('recipe library');
+  });
+});

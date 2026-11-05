@@ -1,6 +1,6 @@
 import { WeaknessClass, BudgetGuard, type Candidate, type Policy } from '@redline/shared';
 import type { RouterClient } from './router-client.js';
-import { buildHuntMessages, type HuntTarget } from './prompts.js';
+import { buildHuntMessages, type HuntTarget, type RecipeHint } from './prompts.js';
 import { parseCandidates, estimateCostCents } from './hunter.js';
 import { SWARM, TIER_ORDER, modelsByTier } from './models.js';
 
@@ -15,6 +15,7 @@ export interface SwarmInput {
   privateMode?: boolean;
   onCandidate?: (c: Candidate) => void;
   onProgress?: (msg: string) => void;
+  recipes?: RecipeHint[];
 }
 
 const ALL_CLASSES = WeaknessClass.options;
@@ -51,7 +52,7 @@ export async function huntSwarm(input: SwarmInput): Promise<Candidate[]> {
         try {
           resp = await input.client.chat({
             model: model.id,
-            messages: buildHuntMessages(target, ALL_CLASSES, input.policy),
+            messages: buildHuntMessages(target, ALL_CLASSES, input.policy, input.recipes ?? []),
             jsonMode: true,
           });
         } catch (err) {

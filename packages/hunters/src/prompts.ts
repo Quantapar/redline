@@ -1,6 +1,12 @@
 import type { WeaknessClass, Policy } from '@redline/shared';
 import type { ChatMessage } from './router-client.js';
 
+export interface RecipeHint {
+  weaknessClass: string;
+  title: string;
+  template: string;
+}
+
 export interface HuntTarget {
   contractName: string;
   filePath: string;
@@ -31,6 +37,7 @@ export function buildHuntMessages(
   target: HuntTarget,
   weaknessClasses: readonly WeaknessClass[],
   policy: Policy,
+  recipes: RecipeHint[] = [],
 ): ChatMessage[] {
   const policyText = policy.rules.length
     ? `\nTeam security policy (pay special attention; flag violations):\n` +
@@ -39,11 +46,15 @@ export function buildHuntMessages(
   const focus = target.analyzerNotes.length
     ? `\nStatic-analysis focus hints:\n` + target.analyzerNotes.map((n) => `- ${n}`).join('\n')
     : '';
+  const recipeText = recipes.length
+    ? `\nKnown attack patterns worth trying (from the shared recipe library):\n` +
+      recipes.slice(0, 12).map((r) => `- [${r.weaknessClass}] ${r.title}: ${r.template}`).join('\n')
+    : '';
   const changed = target.changedFunctions.length
     ? `\nChanged functions to prioritise: ${target.changedFunctions.join(', ')}`
     : '';
   const user = `Contract: ${target.contractName} (${target.filePath})
-Allowed weaknessClass values: ${weaknessClasses.join(', ')}${changed}${focus}${policyText}
+Allowed weaknessClass values: ${weaknessClasses.join(', ')}${changed}${focus}${recipeText}${policyText}
 
 Source:
 \`\`\`solidity

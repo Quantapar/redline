@@ -96,3 +96,8 @@ export async function getDeployGates() {
   }
   return out;
 }
+
+export async function getRecipes() {
+  const { listRecipes } = await import('@redline/db');
+  return listRecipes(db());
+}
