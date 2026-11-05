@@ -290,3 +290,11 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Ran the exact CI sequence against a brand-new empty database: db push created all 10 tables,
   typecheck passed, all 140 tests passed. The public repo's CI will be green on first run.
 - Added CONTRIBUTING.md.
+
+## 2026-11-06 — CI serial tests + visual bug fix + more coverage
+- CI runs tests with --workspace-concurrency=1 so the DB-touching suites (worker, mcp-server)
+  don't race on the shared test database. Serial run is consistently green.
+- Visual QA caught and fixed a Kobra Card layout bug (repositories + going-live cards stacked
+  because Card defaults to flex-col; forced flex-row).
+- Added coverage: domain schema validation, swarm roster tiering, parseSlitherJson.
+- Totals: 154 tests across 10 packages, all green.
