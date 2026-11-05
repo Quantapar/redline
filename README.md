@@ -41,6 +41,25 @@ but the verdict is a consensus of real runs voting on one fact — *did the mone
 We never promise your code is "safe" or "bug-free," nor that we replace a human audit.
 We say "survived these attacks, at this time."
 
+## Features
+
+- **Referee council** — a finding turns red only when a quorum of independent referees, each in
+  its own sandbox, agree value moved. The search can cut corners; the verdict cannot.
+- **Two-room defense** — hunters may use shortcuts while searching; referees strip them and run
+  the attack as plain transactions, so a cheat-dependent "exploit" never raises an alarm.
+- **Model swarm** — a model-agnostic router client runs cheap models first and escalates only
+  where they stall, under a hard per-scan budget cap.
+- **Fix it** — reads the vulnerable contract and opens a reviewed PR with the smallest fix and the
+  attack saved as a permanent regression test. Or use the **MCP connector** so your own AI tool fixes it.
+- **Going-live gates** — a reproduced finding blocks the merge, the deploy (ENS deploy lock), and a
+  Safe multisig deploy.
+- **Watch mode** — a new hack appears, becomes a recipe, and re-tests every repo.
+- **Security policy** — plain-English rules in `.redline/policy.yml`, managed with `redline policy`.
+- **Recipe library** — a shared, public library of attack patterns the swarm pulls on every scan.
+- **Encryption at rest** — saved attacks are AES-256-GCM encrypted with a customer-held key.
+- **Ownership gate** — the finding is public; the runnable attack is redacted until you prove you
+  control the contract.
+
 ## Monorepo layout
 
 | Package | What it is |
@@ -50,9 +69,11 @@ We say "survived these attacks, at this time."
 | `packages/engine` | Fork orchestration (Foundry anvil/forge), static analysis, referee runs |
 | `packages/hunters` | Model-agnostic swarm orchestration (OpenAI-compatible router client) |
 | `packages/worker` | BullMQ job processors (scan pipeline) |
-| `packages/cli` | `redline policy` and local tooling |
+| `packages/gates` | Going-live deploy lock and Safe guard decisions |
+| `packages/cli` | `redline policy` and `redline scan` for local use |
 | `apps/github-app` | Probot GitHub App: webhooks and checks |
-| `apps/web` | Next.js dashboard, live scan room, finding pages |
+| `apps/web` | Next.js dashboard, live scan room, finding and going-live pages |
+| `apps/mcp-server` | MCP connector: your own AI tool pulls a finding and writes the fix |
 
 ## Local development
 
@@ -66,3 +87,17 @@ pnpm dev
 ```
 
 See `docs/ARCHITECTURE.md` for the full design and `docs/SETUP.md` for toolchain setup.
+
+## Try it from the terminal
+
+```bash
+# manage your plain-English security policy
+redline policy init
+redline policy add "No function that moves money may run without a permission check" --severity critical
+
+# hunt + council over a local Solidity project (needs OG_ROUTER_API_KEY; real proof needs Foundry)
+redline scan ./my-contracts
+```
+
+See `docs/DEMO.md` for the two-minute demo, `docs/SETUP.md` to run it, `docs/MCP.md` for the
+connector, and `docs/GITHUB_APP.md` to register the app.
