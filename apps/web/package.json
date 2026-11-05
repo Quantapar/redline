@@ -31,7 +31,8 @@
     "@redline/hunters": "workspace:*",
     "@redline/worker": "workspace:*",
     "@redline/engine": "workspace:*",
-    "ioredis": "5.4.2"
+    "ioredis": "5.4.2",
+    "@redline/gates": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.4",

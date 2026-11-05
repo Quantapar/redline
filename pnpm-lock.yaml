@@ -81,6 +81,9 @@ importers:
       '@redline/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@redline/gates':
+        specifier: workspace:*
+        version: link:../../packages/gates
       '@redline/hunters':
         specifier: workspace:*
         version: link:../../packages/hunters

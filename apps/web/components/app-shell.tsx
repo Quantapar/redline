@@ -11,6 +11,7 @@ import {
   FolderLibraryIcon,
   JusticeScale01Icon,
   Shield01Icon,
+  LockedIcon,
   Settings01Icon,
   Target01Icon,
 } from '@hugeicons/core-free-icons';
@@ -21,6 +22,7 @@ const NAV = [
   { href: '/findings', label: 'Findings', icon: Bug01Icon },
   { href: '/council', label: 'Referee council', icon: JusticeScale01Icon },
   { href: '/policy', label: 'Security policy', icon: Shield01Icon },
+  { href: '/going-live', label: 'Going live', icon: LockedIcon },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

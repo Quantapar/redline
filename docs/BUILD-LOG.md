@@ -199,3 +199,9 @@ Rate-limited paid endpoints. GitHub-App path fetches sources and hunts the chang
 
 Outstanding (user-blocked, all with fallbacks): GitHub App registration secrets, Foundry install,
 flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.md.
+
+## 2026-11-06 — Going-live page (surfaces the deploy lock)
+- New /going-live page uses @redline/gates canDeploy over each repo's latest complete scan:
+  clean -> deploy allowed, a reproduced finding -> deploy blocked with the reason. Shows the
+  ENS-controlled approved-version record (redline.council.eth). Added to the sidebar nav.
+- Totals: 100 tests; the gates feature is now visible and functional in the product.

@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@redline/db', '@redline/shared', '@redline/hunters', '@redline/engine', '@redline/worker'],
+  transpilePackages: ['@redline/db', '@redline/shared', '@redline/hunters', '@redline/engine', '@redline/worker', '@redline/gates'],
   eslint: { ignoreDuringBuilds: true },
   webpack: (config) => {
     // Resolve the .js extensions our source-first workspace packages use to .ts.

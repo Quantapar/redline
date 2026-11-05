@@ -1,4 +1,4 @@
-import { desc, eq, sql } from '@redline/db';
+import { and, desc, eq, sql } from '@redline/db';
 import { schema } from '@redline/db';
 import { db } from './db';
 
@@ -79,4 +79,20 @@ export async function listAllFindings() {
     .innerJoin(schema.scans, eq(schema.findings.scanId, schema.scans.id))
     .innerJoin(schema.repositories, eq(schema.scans.repositoryId, schema.repositories.id))
     .orderBy(desc(schema.findings.isRed), desc(schema.findings.createdAt));
+}
+
+export async function getDeployGates() {
+  const d = db();
+  const repos = await d.select().from(schema.repositories).orderBy(schema.repositories.fullName);
+  const out = [];
+  for (const r of repos) {
+    const [scan] = await d
+      .select()
+      .from(schema.scans)
+      .where(and(eq(schema.scans.repositoryId, r.id), eq(schema.scans.status, 'complete')))
+      .orderBy(desc(schema.scans.createdAt))
+      .limit(1);
+    out.push({ repo: r, scan: scan ?? null });
+  }
+  return out;
 }
