@@ -86,3 +86,11 @@ Not for me to build, parking them here so we don't forget:
   INDEPENDENT RPC providers. Set ARCHIVE_RPC_URLS to a comma-separated list (e.g. Alchemy, Infura,
   Ankr). With a single provider the rooms share an upstream, which weakens the independence claim.
   Right now only one Alchemy URL is configured.
+
+## Update (auth state, accurate)
+- The mutation endpoints now block cross-site POSTs (same-origin CSRF guard), and the admin-only
+  /api/watch requires REDLINE_ADMIN_TOKEN when set. That closes browser-based cross-site abuse.
+- What's still open: a direct (non-browser) client with the URL can call the user-facing mutations
+  (resolve a finding, run a scan). For a single-tenant demo that's acceptable; for multi-tenant
+  production the real fix is a session-auth layer (GitHub OAuth) in front of the dashboard. It's a
+  deliberate next-days item (changes the UX — adds login), not a quick patch. Decide when to add it.
