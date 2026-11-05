@@ -364,3 +364,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   while the same-origin dashboard works unchanged. Non-browser clients (no Origin) still pass; the
   real defence for those is the session-auth layer (ROADMAP). 3 tests. Verified live.
 - Totals: 174 tests across 10 packages, all green.
+
+## 2026-11-06 — component testing + CSRF guard
+- Set up jsdom component testing (@testing-library/react + polyfills for matchMedia/ResizeObserver/
+  WAAPI). Tests for RunScanButton (posts + navigates) and FindingStatusControl (resolve flow +
+  reopen state) — the interactive UI logic is now covered.
+- Same-origin CSRF guard on the mutation endpoints (verified: cross-origin -> 403, UI unaffected).
+- Totals: 178 tests across 10 packages, all green.
