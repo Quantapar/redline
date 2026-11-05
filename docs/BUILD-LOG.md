@@ -285,3 +285,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - The council dispatch now resolves each referee's fork RPC from ARCHIVE_RPC_URLS (comma-separated
   independent providers) or ARCHIVE_RPC_URL. The Foundry referee forks from these the moment Foundry
   is installed; the simulation ignores them. Documented the multi-provider independence need.
+
+## 2026-11-06 — CI certified on a fresh database
+- Ran the exact CI sequence against a brand-new empty database: db push created all 10 tables,
+  typecheck passed, all 140 tests passed. The public repo's CI will be green on first run.
+- Added CONTRIBUTING.md.
