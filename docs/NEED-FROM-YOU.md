@@ -72,3 +72,11 @@ Not for me to build, parking them here so we don't forget:
 - Added MIT LICENSE (ETHGlobal usually requires an OSI license for public repos). Change the
   license or the copyright holder line if you'd prefer something else.
 - Added a CI workflow (.github/workflows/ci.yml): Postgres + Redis services, typecheck + tests.
+
+## Update (Foundry)
+- Foundry (forge/anvil) install keeps getting blocked by the sandbox (its one-line
+  installer pipes external code to a shell). When you're back, approve it or run:
+  `curl -L https://foundry.paradigm.xyz | bash && foundryup`
+- Until then the engine runs on the deterministic simulation. A ready-to-run Foundry
+  fixture (vulnerable vault + a real reentrancy PoC) is in fixtures/vault/ to validate
+  the real fork path the moment Foundry is installed.
