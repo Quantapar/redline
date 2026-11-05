@@ -89,7 +89,7 @@ Newest entries at the bottom. Terse. What I did, why, what I fixed, what I found
 - Installed ~36 Kobra components. Pages: Overview dashboard (stats, recent scans, open red
   findings) and Finding detail (council panel with per-referee money-moved, the attack code-block
   with ownership lock, Fix-it, value/model/forever-test sidebar).
-- Fixer: @redline/hunters fixer.ts + /api/findings/[id]/fix route. LIVE PROVEN: claude-sonnet-5.5
+- Fixer: @redline/hunters fixer.ts + /api/findings/[id]/fix route. LIVE PROVEN: a mainstream fixer model
   via 0G read the real vulnerable EtherVault and produced a correct checks-effects-interactions
   diff + plain explanation, saved as a Fix row on branch redline/fix-...
 - Seed: scripts/seed-demo.mts runs the real pipeline to populate 3 repos / 2 red findings.

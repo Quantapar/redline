@@ -26,7 +26,7 @@ export const SWARM: SwarmModel[] = [
 ];
 
 /** Models reserved for explaining and writing fixes (mainstream, rarely refuse here). */
-export const FIXER_MODELS = ['claude-sonnet-5.5', 'gpt-5.5', 'gemini-3.5-flash'] as const;
+export const FIXER_MODELS = ['gpt-5.5', 'gemini-3.5-flash', 'deepseek-v4-pro'] as const;
 
 export function modelsByTier(tier: Tier): SwarmModel[] {
   return SWARM.filter((m) => m.tier === tier);

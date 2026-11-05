@@ -2,7 +2,7 @@ import type { ChatMessage, ChatResponse } from './router-client.js';
 import { extractJson } from './hunter.js';
 
 /** Mainstream models explain and fix well and rarely refuse here. */
-export const DEFAULT_FIXER_MODEL = 'claude-sonnet-5.5';
+export const DEFAULT_FIXER_MODEL = 'gpt-5.5';
 
 export interface FixResult {
   explanation: string;
