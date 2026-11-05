@@ -52,7 +52,7 @@ export class OGRouterClient implements RouterClient {
   constructor(opts: OGRouterOptions = {}) {
     this.baseUrl = (opts.baseUrl ?? process.env.OG_ROUTER_BASE_URL ?? 'https://router-api.0g.ai/v1').replace(/\/$/, '');
     this.apiKey = opts.apiKey ?? process.env.OG_ROUTER_API_KEY ?? '';
-    this.privateMode = opts.privateMode ?? false;
+    this.privateMode = opts.privateMode ?? process.env.OG_PRIVATE_MODE === 'true';
     this.timeoutMs = opts.timeoutMs ?? 120_000;
     if (!this.apiKey) throw new Error('OG_ROUTER_API_KEY is not set');
   }

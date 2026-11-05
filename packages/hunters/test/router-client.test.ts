@@ -46,6 +46,19 @@ describe('OGRouterClient', () => {
     await expect(client.chat({ model: 'm', messages: [] })).rejects.not.toThrow(/super-secret-key/);
   });
 
+  it('sends the private-mode header only when private mode is on', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res(200, okCompletion));
+    vi.stubGlobal('fetch', fetchMock);
+    await new OGRouterClient({ apiKey: 'k', privateMode: true }).chat({ model: 'm', messages: [] });
+    const headers = fetchMock.mock.calls[0]![1]!.headers as Record<string, string>;
+    expect(headers['x-0g-private']).toBe('true');
+
+    fetchMock.mockClear();
+    await new OGRouterClient({ apiKey: 'k', privateMode: false }).chat({ model: 'm', messages: [] });
+    const headers2 = fetchMock.mock.calls[0]![1]!.headers as Record<string, string>;
+    expect(headers2['x-0g-private']).toBeUndefined();
+  });
+
   it('requires an api key', () => {
     expect(() => new OGRouterClient({ apiKey: '' })).toThrow(/OG_ROUTER_API_KEY/);
   });

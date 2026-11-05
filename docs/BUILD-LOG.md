@@ -246,3 +246,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   /api/findings/[id]/status route (validated), and a status control on the finding page.
   Teams can acknowledge, resolve, and reopen findings. 2 tests + live-verified.
 - Totals: 115 tests across 10 packages, all green.
+
+## 2026-11-06 — 0G private mode + findings-list status
+- OGRouterClient private mode is env-configurable (OG_PRIVATE_MODE) and sends x-0g-private so
+  sensitive attack-writing can run in the router's private/TEE mode. Test confirms the header is
+  present only when enabled.
+- Findings list shows triage status; the dashboard excludes resolved findings from open alarms.
+- Totals: 116 tests across 10 packages, all green.
