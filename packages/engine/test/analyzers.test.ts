@@ -69,3 +69,23 @@ describe('parseSlitherJson', () => {
     expect(parseSlitherJson(JSON.stringify({ results: {} }))).toEqual([]);
   });
 });
+
+import { parseAderynJson } from '../src/analyzers/aderyn.js';
+
+describe('parseAderynJson', () => {
+  const sample = JSON.stringify({
+    high_issues: { issues: [{ title: 'Reentrancy', instances: [{ contract_name: 'Vault', contract_path: 'src/Vault.sol', line_no: 12 }] }] },
+    medium_issues: { issues: [{ title: 'Unused return', instances: [{ contract_name: 'Token', contract_path: 'src/Token.sol', line_no: 5 }] }] },
+  });
+  it('collects high and medium issues with confidence and location', () => {
+    const hits = parseAderynJson(sample);
+    expect(hits).toHaveLength(2);
+    expect(hits[0]!.confidence).toBe('high');
+    expect(hits[0]!.contract).toBe('Vault');
+    expect(hits[0]!.line).toBe(12);
+    expect(hits[1]!.confidence).toBe('medium');
+  });
+  it('returns empty on malformed input', () => {
+    expect(parseAderynJson('{')).toEqual([]);
+  });
+});
