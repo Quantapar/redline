@@ -225,3 +225,11 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   (source: watch-mode) and queues a watch-mode scan of every enabled repo's latest version.
   Enqueue is injected for testability. 2 tests.
 - Totals: 109 tests across 9 packages, all green.
+
+## 2026-11-06 — MCP connector + health + empty states
+- apps/mcp-server: MCP server (stdio) exposing redline_list_findings and redline_fix_context so a
+  developer's own AI coding tool can pull a finding + vulnerable source and write the fix itself.
+  Returns plain finding/source, never a weaponised exploit. 3 tests. Doc: docs/MCP.md.
+- /api/health reports DB + Redis connectivity. Empty states on findings/repositories pages.
+- Fixed apps/* vitest alias paths (needed ../../packages, not ../).
+- Totals: 112 tests across 10 packages, all green; production build passes.

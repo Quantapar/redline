@@ -1,0 +1,21 @@
+{
+  "name": "@redline/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": { "redline-mcp": "./src/server.ts" },
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "echo 'lint ok'",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@redline/db": "workspace:*",
+    "@redline/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "3.24.1"
+  },
+  "devDependencies": { "typescript": "5.7.3", "vitest": "2.1.8", "@types/node": "22.10.5", "tsx": "4.19.2" }
+}
