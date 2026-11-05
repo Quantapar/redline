@@ -253,3 +253,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   present only when enabled.
 - Findings list shows triage status; the dashboard excludes resolved findings from open alarms.
 - Totals: 116 tests across 10 packages, all green.
+
+## 2026-11-06 — public proof export
+- GET /api/findings/[id]/proof returns the council's votes and receipts (per-referee provider,
+  block, outcome, balance deltas) so anyone can re-check that the money moved. It never includes
+  the runnable attack. This is the publishable proof (the Arkiv public-proofs fit).
+- Live-verified: reproduced finding returns 3/3 agreement, 3 runs, zero attack code.
+- Slither install abandoned: Python 3.14 is too new for its toolchain (noted as external blocker).
