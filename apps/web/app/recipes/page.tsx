@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { StatusBadge } from '@/components/status-badge';
 import { Icon } from '@/components/icon';
 import { Target01Icon } from '@hugeicons/core-free-icons';
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
 import { WEAKNESS_LABEL, SEVERITY_HUE } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,15 @@ export default async function RecipesPage() {
         </div>
       </div>
 
+      {recipes.length === 0 ? (
+        <Empty className="rounded-xl border border-border py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Icon icon={Target01Icon} size={22} /></EmptyMedia>
+            <EmptyTitle>No recipes yet</EmptyTitle>
+            <EmptyDescription>The library fills as the swarm proves attacks and as new hacks are turned into recipes.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
       <div className="grid gap-3">
         {recipes.map((r) => (
           <Card key={r.id} className="p-4">
@@ -46,6 +56,7 @@ export default async function RecipesPage() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }
