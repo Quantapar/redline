@@ -7,6 +7,17 @@ it by reproducing the theft on a throwaway copy of the chain, where nothing real
 at stake. You only get an alarm when independent referees agree the money actually
 moved — and the alarm comes with a replay you can run yourself.
 
+## Screenshots
+
+The dashboard — only reproduced thefts are shown, never guesses:
+
+![Redline dashboard](docs/images/dashboard.jpg)
+
+A finding — the referee council's proof, the value moved, and the attack (its runnable form
+stays locked until you prove you control the contract):
+
+![A reproduced finding](docs/images/finding.jpg)
+
 ## How it works
 
 1. **Install** the GitHub App and pick your repos. It finds your contracts and test setup.
