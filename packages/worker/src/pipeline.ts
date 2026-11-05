@@ -3,7 +3,7 @@ import {
 } from '@redline/shared';
 import {
   type Database, setScanStatus, getScan, insertCandidate, insertRefereeRuns,
-  insertFinding, insertRegressionTest, listRecipes, schema,
+  insertFinding, insertRegressionTest, listRecipes, encrypt, schema,
 } from '@redline/db';
 import { runCouncil, type RefereeEngine, type CouncilDispatch } from '@redline/engine';
 import { huntSwarm, type RouterClient, type HuntTarget } from '@redline/hunters';
@@ -153,7 +153,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
         repositoryId: scan.repositoryId,
         findingId: findingRow.id,
         weaknessClass: c.weaknessClass,
-        forgeTest: c.forgeTest,
+        forgeTest: encrypt(c.forgeTest), // the saved attack is encrypted at rest
         active: true,
       });
     }

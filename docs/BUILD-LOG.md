@@ -212,3 +212,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   hints in the hunt prompt on every scan. New /recipes page surfaces the library.
 - Tests: recipe hints appear in the prompt when provided, omitted otherwise.
 - Totals: 102 tests across 9 packages, all green.
+
+## 2026-11-06 — encryption at rest
+- @redline/db crypto: AES-256-GCM encrypt/decrypt with a customer-held ENCRYPTION_KEY (base64,
+  32 bytes). Marker prefix enc:v1:; plaintext fallback in dev; GCM auth rejects tampering.
+- The pipeline encrypts the saved attack (regression_tests.forge_test) at rest, so a stolen DB
+  yields ciphertext, not runnable exploits. Verified: stored value is enc:v1:...
+- 5 crypto tests. Totals: 107 tests across 9 packages.
