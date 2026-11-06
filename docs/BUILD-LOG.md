@@ -880,3 +880,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   CLI's deploy-check base URL). Added all four with their defaults; only TEST_DATABASE_URL
   remains undocumented, correctly, as a test/CI-only var. A deployer now has a complete,
   accurate env reference.
+
+## 2026-11-06 — dashboard empty state for the first-run experience
+
+- The dashboard's "Recent scans" table rendered scans.map with no empty handling, so a
+  new user (zero scans) saw a table with headers and a blank body — the very first screen.
+  The adjacent "Open red findings" section already handled empty ("No open alarms."). Added
+  a matching empty row: "No scans yet. Connect a repository and open a pull request, or run
+  a scan to see results here." Typecheck + production build pass; the demo (non-empty) path
+  still renders.

@@ -53,7 +53,14 @@ export default async function OverviewPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scans.map(({ scan, repoName }) => (
+                {scans.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-8 text-center text-[13px] text-muted-foreground">
+                      No scans yet. Connect a repository and open a pull request, or run a scan to see results here.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                scans.map(({ scan, repoName }) => (
                   <TableRow key={scan.id} className="cursor-default">
                     <TableCell className="ps-6">
                       <Link href={`/scans/${scan.id}`} className="flex items-center gap-2 font-medium hover:underline">
@@ -71,7 +78,7 @@ export default async function OverviewPage() {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                )))}
               </TableBody>
             </Table>
           </CardContent>
