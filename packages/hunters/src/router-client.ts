@@ -43,6 +43,27 @@ export interface OGRouterOptions {
   timeoutMs?: number;
 }
 
+/**
+ * Parse a Retry-After header (delta-seconds or an HTTP-date) into milliseconds.
+ * Returns null when it is absent or unparseable. Capped at 20s so a hostile or
+ * mistaken value cannot stall a budget-capped scan; the backoff is not tied to
+ * the request's abort signal, so the cap is the only bound on it.
+ */
+export function retryAfterMs(res: Pick<Response, 'headers'>): number | null {
+  const raw = res.headers?.get?.('retry-after');
+  if (!raw) return null;
+  const secs = Number(raw);
+  let ms: number;
+  if (Number.isFinite(secs)) ms = secs * 1000;
+  else {
+    const when = Date.parse(raw);
+    if (Number.isNaN(when)) return null;
+    ms = when - Date.now();
+  }
+  if (ms <= 0) return null;
+  return Math.min(ms, 20_000);
+}
+
 export class OGRouterClient implements RouterClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -82,7 +103,10 @@ export class OGRouterClient implements RouterClient {
         if (res.status >= 500 || res.status === 429) {
           lastErr = new Error(`router ${res.status}`);
           if (attempt < 2) {
-            await new Promise((r) => setTimeout(r, 500 * (attempt + 1) ** 2));
+            // Honor the router's own Retry-After (common on 429) instead of guessing;
+            // fall back to exponential backoff when it is absent.
+            const backoff = retryAfterMs(res) ?? 500 * (attempt + 1) ** 2;
+            await new Promise((r) => setTimeout(r, backoff));
             continue;
           }
         }

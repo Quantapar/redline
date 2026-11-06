@@ -595,3 +595,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   cancel) matching the established pattern.
 - Added 4 unit tests for the rate limiter itself (limit then 429, per-key isolation,
   window reset via fake timers, client-key derivation). Suite 231 green.
+
+## 2026-11-06 — router client honors Retry-After
+
+- Audited the 0G router client's resilience (3x retry, exponential backoff, JSON-mode
+  fallback, abort-timeout — all sound). One gap: on a 429 it ignored the router's
+  Retry-After header and used a fixed 0.5s backoff, so a router asking for 30s got
+  retried too soon and likely 429'd again, wasting the retry budget. Now parses
+  Retry-After (delta-seconds or HTTP-date) and uses it, capped at 20s so a hostile or
+  mistaken value cannot stall a budget-capped scan; falls back to exponential backoff
+  when the header is absent (so existing behavior is unchanged). +4 tests. Suite 235 green.

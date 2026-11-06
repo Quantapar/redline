@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { OGRouterClient } from '../src/router-client.js';
+import { OGRouterClient, retryAfterMs } from '../src/router-client.js';
 
 function res(status: number, body: unknown) {
   return {
@@ -61,5 +61,38 @@ describe('OGRouterClient', () => {
 
   it('requires an api key', () => {
     expect(() => new OGRouterClient({ apiKey: '' })).toThrow(/OG_ROUTER_API_KEY/);
+  });
+
+  it('honors a Retry-After header on 429, then succeeds', async () => {
+    vi.useFakeTimers();
+    try {
+      const r429 = { ...res(429, 'slow down'), headers: { get: (k: string) => (k.toLowerCase() === 'retry-after' ? '2' : null) } } as Response;
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(r429)
+        .mockResolvedValueOnce(res(200, okCompletion));
+      vi.stubGlobal('fetch', fetchMock);
+      const p = new OGRouterClient({ apiKey: 'k' }).chat({ model: 'm', messages: [] });
+      await vi.advanceTimersByTimeAsync(2100); // past the 2s the header asked for
+      const r = await p;
+      expect(r.model).toBe('m');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('retryAfterMs', () => {
+  const withHeader = (v: string | null) => ({ headers: { get: () => v } }) as unknown as Response;
+  it('parses delta-seconds', () => {
+    expect(retryAfterMs(withHeader('5'))).toBe(5000);
+  });
+  it('caps an absurd value so it cannot stall the scan', () => {
+    expect(retryAfterMs(withHeader('99999'))).toBe(20_000);
+  });
+  it('returns null when absent or unparseable', () => {
+    expect(retryAfterMs(withHeader(null))).toBeNull();
+    expect(retryAfterMs(withHeader('soon'))).toBeNull();
+    expect(retryAfterMs({ headers: undefined } as unknown as Response)).toBeNull();
   });
 });
