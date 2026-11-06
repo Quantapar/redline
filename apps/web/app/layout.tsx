@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './overlay.css';
 import { AppShell } from '@/components/app-shell';
+import { DevFeedback } from '@/components/dev-feedback';
 import { issueMutationToken } from '@/lib/auth';
 import { listAllFindings } from '@/lib/queries';
 
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body suppressHydrationWarning>
         <AppShell openAlarms={openAlarms}>{children}</AppShell>
+        <DevFeedback />
       </body>
     </html>
   );
