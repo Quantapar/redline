@@ -59,10 +59,10 @@ export class FoundryRefereeEngine implements RefereeEngine {
     //
     // This is NOT the whole guarantee. scanCheats is a source-text scanner and
     // can be evaded by cheat access that leaves no literal token (see the SECURITY
-    // note in cheatcodes.ts). The trustworthy isolation is execution-level:
-    // running the attack as broadcast transactions where the cheatcode precompile
-    // is inert. That hardening of this engine is a tracked requirement before a
-    // red from the real fork path is fully trusted.
+    // note in cheatcodes.ts). The trustworthy isolation is execution-level: running
+    // the attack as broadcast transactions where the cheatcode precompile is inert.
+    // That engine now exists and is proven in `broadcast.ts` (runBroadcastExploit);
+    // swapping this forge-test measurement over to it is tracked in SECURITY.md.
     if (scanCheats(cleaned).hasForbidden) {
       return { ...base, outcome: 'error', finishedAt: now(), error: 'forbidden cheat survived stripping; referee refuses cheat-bearing run' };
     }

@@ -25,21 +25,35 @@ Two layers enforce this:
    removes cheat-bearing lines and refuses any candidate where a cheat survives. It catches the
    inherited `vm`/`hevm` handle, bare forge-std helpers, aliasing the `Vm` interface, and any
    reference to the cheatcode precompile address `0x7109…DD12D`.
-2. **Execution-level isolation** — the real guarantee. Static text matching alone cannot be
-   trusted: a determined hunter can reach the cheatcode precompile without a literal token (e.g.
-   an address computed at runtime, or a raw assembly call). The trustworthy defense is to run the
-   referee's attack as **broadcast transactions from a funded EOA** against the fork, where the
-   cheatcode precompile is inert — a call to it hits empty code and does nothing, so a
-   cheat-dependent "exploit" simply fails to move money. The referee's forge config must also set
-   `ffi = false` and empty `fs_permissions`, so that even if a cheat were reached, host command
-   execution and filesystem access stay off. The forge invocation already never passes `--ffi`.
+2. **Execution-level isolation** — the real guarantee, now implemented in
+   `packages/engine/src/broadcast.ts`. Static text matching alone cannot be trusted: a determined
+   hunter can reach the cheatcode precompile without a literal token (e.g. an address computed at
+   runtime, or a raw assembly call). The trustworthy defense is to run the attack as **broadcast
+   transactions from a funded EOA** against an anvil node (fresh chain or fork), where the
+   cheatcode precompile `0x7109…DD12D` is just a codeless address — a call to it succeeds as an
+   inert no-op, so a cheat-dependent "exploit" fabricates nothing and simply fails to move money.
+   `runBroadcastExploit` deploys the attacker as ordinary creation code, runs its entrypoint as a
+   real transaction, and measures net theft from the attacker's **actual on-chain balance** (gas is
+   paid by the EOA, so the contract balance is already net of gas). Because every step is a plain
+   JSON-RPC transaction via `cast`, no cheatcode and no `ffi`/filesystem access is reachable at all.
+   This is proven by `packages/engine/test/broadcast.test.ts`: a genuine reentrancy attacker drains
+   a seeded vault (`moved`, ≥ the honest deposit), while a `CheatAttacker` that calls
+   `vm.deal(address(this), 1000 ether)` nets **exactly zero** (`did-not-move`) — the same call that
+   would "succeed" under `forge test`.
 
-**Known limit (tracked):** the real fork-based referee (`FoundryRefereeEngine`) currently runs the
-attack as a `forge test`, where cheatcodes are available, and relies on layer 1 to keep them out.
-Until it is hardened to the broadcast-transaction model of layer 2, a red verdict from the real
-fork path is treated as **defense-in-depth, not a full proof**. The deterministic simulation path
-(used for CI and demos) is unaffected, as it never executes untrusted code. This is recorded as a
-required hardening in `docs/NEED-FROM-YOU.md`.
+   PR-authored contract source paths are also normalised through `safeProjectPath` before any file
+   is written into the sandbox project, rejecting absolute paths and `..` traversal so a crafted
+   filename cannot escape the project dir.
+
+**Remaining integration (tracked):** the execution-level engine above exists and is proven in
+isolation. The default `FoundryRefereeEngine` still *measures* via `forge test` (where cheatcodes
+are available) and leans on layer 1 to keep them out; switching the council's real-fork measurement
+over to `runBroadcastExploit` requires candidates expressed as deployable attackers against the live
+fork target, and an end-to-end run against a real archive RPC to validate (see item #5 in
+`docs/NEED-FROM-YOU.md`). Until that measurement swap lands, a red verdict from the `forge test`
+path is treated as **defense-in-depth, not a full proof**; the broadcast path, where it runs, is a
+full proof. The deterministic simulation path (used for CI and demos) is unaffected, as it never
+executes untrusted code.
 
 ## Handling of secrets and customer code
 - Secrets live only in gitignored `.env` / `.env.local`; only `*.example` files are committed.

@@ -924,3 +924,32 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - forge install restores fixtures/vault/lib/forge-std; added it to .gitignore (not committed).
 - Full suite green with Foundry present and DATABASE_URL unset: 279 tests across 10 packages;
   web production build passes. Suite 279 green (now 0 skipped; queue-e2e counts as a run test).
+
+## 2026-11-06 — execution-level referee isolation (broadcast path) + independent review
+
+- Built the real cheat-proof execution path the SECURITY note called for. runBroadcastExploit
+  (packages/engine/src/broadcast.ts) runs an attack as REAL cast transactions from a funded anvil
+  EOA, measuring net theft from the attacker contract's on-chain balance. The cheatcode precompile
+  (0x7109...12d) is a codeless no-op on a real node, so a cheat-based "exploit" fabricates nothing.
+  Proven in test: a genuine reentrancy attacker drains a seeded vault (moved); a CheatAttacker
+  calling vm.deal(address(this), 1000 ether) nets exactly 0 (did-not-move).
+- New Foundry primitives in foundry.ts: startAnvil (fresh chain), castBalance/castDeploy/castSend,
+  forgeBuildArtifact; launchAnvil refactor shared with startFork. safeProjectPath traversal guard.
+- Independent subagent review (security-focused) found and we fixed:
+  * HIGH: cast argument injection — a candidate-controlled arg like `--value 5ether` could self-fund
+    the attacker and register as theft. Added assertSafeSig/assertSafeArgs (reject flag-shaped sigs
+    and any arg starting with `-`) + assertSafeContractName. Proven by a test that an injected
+    --value yields outcome 'error', never 'moved'.
+  * MED: net-theft math now subtracts the contract's pre-attack balance (after - before - stake),
+    keeping it consistent with deltaIsConsistent and correct on a forked CREATE address.
+  * MED: safeProjectPath is now symlink-aware (realpath of the deepest existing ancestor, re-checked
+    for containment) and no longer over-rejects legitimate names like `..keep`.
+  * LOW: launchAnvil fork-block-0 bug (if(block) -> if(block!==undefined)); readiness no-result
+    branch no longer busy-spins; forgeBuildArtifact contractName guarded against path traversal.
+- CI now installs Foundry (foundry-rs/foundry-toolchain@v1) so the execution-level tests actually
+  run in CI instead of skipping.
+- Suite: 293 tests across 10 packages (engine 64, +14 broadcast). Web build passes. Honestly scoped
+  in SECURITY.md: the executor is proven in isolation; swapping the council's real-fork MEASUREMENT
+  over to it (vs forge test) needs candidates as deployable attackers + an end-to-end run on a real
+  archive RPC (item #5). Until then the forge-test path stays defense-in-depth; the broadcast path
+  is a full proof where it runs.

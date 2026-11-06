@@ -23,10 +23,11 @@ export async function gitPrepare(scan: typeof schema.scans.$inferSelect): Promis
     if (!t.source) continue; // no content captured -> nothing to attack
     const contractName = t.contract || t.source.match(/contract\s+(\w+)/)?.[1] || 'Unknown';
     // SECURITY: t.file is a PR-author-controlled path. It is safe to store and to
-    // use as a GitHub API path (GitHub resolves it within the repo), but when the
-    // Foundry src-prep step is built it MUST NOT be joined into a local write path
-    // without normalising and rejecting traversal (`..`, absolute paths), or a
-    // crafted filename could escape the sandbox project dir. See docs/NEED-FROM-YOU.md.
+    // use as a GitHub API path (GitHub resolves it within the repo). When it is
+    // joined into a local write path for the Foundry src-prep step, it MUST go
+    // through `safeProjectPath` (packages/engine/src/broadcast.ts), which rejects
+    // absolute paths and `..` traversal so a crafted filename cannot escape the
+    // sandbox project dir. That guard is implemented and unit-tested.
     targets.push({
       contractName,
       filePath: t.file,

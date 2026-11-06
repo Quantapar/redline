@@ -37,6 +37,8 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install Foundry (so the execution-level referee tests actually run)
+        uses: foundry-rs/foundry-toolchain@v1
       - name: Push database schema
         run: pnpm --filter @redline/db push
       - name: Typecheck

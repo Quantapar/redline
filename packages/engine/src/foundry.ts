@@ -22,41 +22,59 @@ export async function detectFoundry(): Promise<FoundryInfo> {
   return { available: Boolean(forge && anvil), forgeVersion: forge, anvilVersion: anvil };
 }
 
-export interface ForkHandle {
+/**
+ * anvil's default deterministic dev accounts (the standard test mnemonic
+ * "test test ... junk"). Each starts with 10,000 ETH. The referee uses the
+ * first as the funded attacker EOA so the attack pays real gas from a real
+ * balance — no cheatcode is needed or available to fund it.
+ */
+export const ANVIL_ACCOUNTS: ReadonlyArray<{ address: string; privateKey: string }> = [
+  { address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' },
+  { address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', privateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' },
+  { address: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', privateKey: '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a' },
+];
+
+export interface AnvilHandle {
   rpcUrl: string;
   port: number;
   block: number;
   stop: () => Promise<void>;
 }
+/** @deprecated name kept for compatibility; a fork is just an anvil with --fork-url. */
+export type ForkHandle = AnvilHandle;
 
-/**
- * Start an anvil fork of a chain at a given block — the attack room. Each
- * referee gets its own fresh fork, ideally at a different block and through a
- * different upstream provider.
- */
-export async function startFork(opts: {
-  forkUrl: string;
+interface LaunchOpts {
+  /** when set, anvil forks this upstream; when omitted, a fresh local chain. */
+  forkUrl?: string;
   block?: number;
   port?: number;
   mnemonic?: string;
   /** anvil binary name; overridable for tests */
   bin?: string;
-}): Promise<ForkHandle> {
+  /** readiness timeout; the fork path needs longer because it pulls upstream state */
+  readyTimeoutMs?: number;
+}
+
+/**
+ * Launch an anvil node (forked or fresh) and resolve once it answers RPC. Shared
+ * by startFork (the attack room, forked at a block) and startAnvil (a fresh chain
+ * for self-contained execution). A node that emits 'error' with no listener would
+ * crash the process; ENOENT (anvil not installed) is exactly that case, so it is
+ * captured and surfaced as a clean throw instead.
+ */
+async function launchAnvil(opts: LaunchOpts): Promise<AnvilHandle> {
   const port = opts.port ?? 8545 + Math.floor(Math.random() * 1000);
-  const args = ['--fork-url', opts.forkUrl, '--port', String(port), '--silent'];
-  if (opts.block) args.push('--fork-block-number', String(opts.block));
+  const args = ['--port', String(port), '--silent'];
+  if (opts.forkUrl) args.push('--fork-url', opts.forkUrl);
+  if (opts.block !== undefined) args.push('--fork-block-number', String(opts.block));
   if (opts.mnemonic) args.push('--mnemonic', opts.mnemonic);
 
   const child: ChildProcess = spawn(opts.bin ?? 'anvil', args, { stdio: 'ignore' });
-  // A ChildProcess that emits 'error' with no listener throws an uncaught exception
-  // that crashes the process. anvil not being installed (spawn ENOENT) is exactly
-  // that case, so capture it and fail gracefully instead.
   const spawnState: { error: Error | null } = { error: null };
   child.once('error', (err) => { spawnState.error = err; });
   const rpcUrl = `http://127.0.0.1:${port}`;
 
-  // Wait until the fork responds to eth_blockNumber.
-  const deadline = Date.now() + 30_000;
+  const deadline = Date.now() + (opts.readyTimeoutMs ?? 30_000);
   let block = opts.block ?? 0;
   let ready = false;
   while (Date.now() < deadline) {
@@ -73,6 +91,9 @@ export async function startFork(opts: {
         ready = true;
         break;
       }
+      // Connected but not answering with a result yet — wait before retrying so
+      // this does not busy-spin the event loop.
+      await new Promise((r) => setTimeout(r, 300));
     } catch {
       await new Promise((r) => setTimeout(r, 300));
     }
@@ -82,19 +103,130 @@ export async function startFork(opts: {
     throw new Error(`anvil failed to start: ${spawnState.error.message}`);
   }
   if (!ready) {
-    // Partially started but never answered — kill it so we don't leak the process.
     child.kill('SIGTERM');
-    throw new Error(`anvil fork did not become ready within 30s on port ${port}`);
+    throw new Error(`anvil did not become ready within ${opts.readyTimeoutMs ?? 30_000}ms on port ${port}`);
   }
 
-  return {
-    rpcUrl,
-    port,
-    block,
-    stop: async () => {
-      child.kill('SIGTERM');
-    },
-  };
+  return { rpcUrl, port, block, stop: async () => { child.kill('SIGTERM'); } };
+}
+
+/**
+ * Start an anvil fork of a chain at a given block — the attack room. Each
+ * referee gets its own fresh fork, ideally at a different block and through a
+ * different upstream provider.
+ */
+export async function startFork(opts: {
+  forkUrl: string;
+  block?: number;
+  port?: number;
+  mnemonic?: string;
+  bin?: string;
+}): Promise<AnvilHandle> {
+  return launchAnvil({ ...opts });
+}
+
+/**
+ * Start a fresh local anvil chain (no fork). Used by the broadcast executor to
+ * run an attack as real transactions against deployed contracts when there is no
+ * upstream to fork (tests, self-contained fixtures).
+ */
+export async function startAnvil(opts: { port?: number; mnemonic?: string; bin?: string } = {}): Promise<AnvilHandle> {
+  return launchAnvil({ ...opts });
+}
+
+// ---- cast: real JSON-RPC transactions against an anvil node ----------------
+// Every call below is an ordinary transaction or query against the node. The
+// cheatcode precompile (0x7109...12d) is just a codeless address here, so any
+// vm.* call inside a deployed contract is an inert no-op — this is the
+// execution-level isolation the source-text scanner cannot guarantee on its own.
+//
+// SECURITY: a function signature and its call args may be candidate-influenced.
+// execFile blocks SHELL injection but NOT cast/clap ARGUMENT injection: an arg
+// like `--value 5ether` or `--unlocked` spliced into argv would let a fake
+// "exploit" fund itself or impersonate a prefunded account and register as a
+// theft. So the signature is checked against a strict shape and no call arg may
+// look like a flag (leading `-`). Harness-controlled numeric/known values
+// (valueWei, gasLimit) are not subject to this.
+
+/** A plain function/constructor signature: `name(type,type)` — no flags, no shell. */
+function assertSafeSig(sig: string): void {
+  if (!/^(constructor|[A-Za-z_$][A-Za-z0-9_$]*)\([A-Za-z0-9_,.\[\]() ]*\)$/.test(sig)) {
+    throw new Error(`unsafe cast signature: ${sig}`);
+  }
+}
+/** Reject any call arg that could be parsed as a cast/clap option. */
+function assertSafeArgs(args: readonly string[] | undefined): void {
+  for (const a of args ?? []) {
+    if (typeof a !== 'string' || a.startsWith('-')) {
+      throw new Error(`unsafe cast argument (looks like a flag): ${String(a)}`);
+    }
+  }
+}
+/** A Solidity identifier used to build a filesystem path — no separators/traversal. */
+function assertSafeContractName(name: string): void {
+  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) {
+    throw new Error(`unsafe contract name: ${name}`);
+  }
+}
+
+/** Read an address's native balance (wei, decimal string) at the node's head. */
+export async function castBalance(rpcUrl: string, address: string, bin = 'cast'): Promise<string> {
+  const { stdout } = await pexec(bin, ['balance', address, '--rpc-url', rpcUrl], { timeout: 20_000 });
+  return stdout.trim();
+}
+
+/**
+ * Deploy raw creation bytecode from a funded key via a real transaction and
+ * return the deployed contract address.
+ */
+export async function castDeploy(opts: {
+  rpcUrl: string;
+  privateKey: string;
+  bytecode: string;
+  /** constructor signature + args, encoded and appended to the init code by cast. */
+  constructorSig?: string;
+  constructorArgs?: string[];
+  valueWei?: string;
+  bin?: string;
+}): Promise<string> {
+  const args = ['send', '--rpc-url', opts.rpcUrl, '--private-key', opts.privateKey, '--json', '--create', opts.bytecode];
+  if (opts.constructorSig) {
+    assertSafeSig(opts.constructorSig);
+    assertSafeArgs(opts.constructorArgs);
+    args.push(opts.constructorSig, ...(opts.constructorArgs ?? []));
+  }
+  if (opts.valueWei && opts.valueWei !== '0') args.push('--value', opts.valueWei);
+  const { stdout } = await pexec(opts.bin ?? 'cast', args, { timeout: 60_000, maxBuffer: 8 * 1024 * 1024 });
+  const receipt = JSON.parse(stdout) as { contractAddress?: string };
+  if (!receipt.contractAddress) throw new Error('deploy produced no contractAddress');
+  return receipt.contractAddress;
+}
+
+/** Send a real transaction calling `sig` with `args` (and optional value). */
+export async function castSend(opts: {
+  rpcUrl: string;
+  privateKey: string;
+  to: string;
+  sig: string;
+  args?: string[];
+  valueWei?: string;
+  gasLimit?: number;
+  bin?: string;
+}): Promise<{ status: boolean; raw: string }> {
+  assertSafeSig(opts.sig);
+  assertSafeArgs(opts.args);
+  const a = ['send', '--rpc-url', opts.rpcUrl, '--private-key', opts.privateKey, '--json', opts.to, opts.sig, ...(opts.args ?? [])];
+  if (opts.valueWei && opts.valueWei !== '0') a.push('--value', opts.valueWei);
+  if (opts.gasLimit) a.push('--gas-limit', String(opts.gasLimit));
+  try {
+    const { stdout } = await pexec(opts.bin ?? 'cast', a, { timeout: 60_000, maxBuffer: 8 * 1024 * 1024 });
+    const receipt = JSON.parse(stdout) as { status?: string };
+    // anvil returns "0x1" (success) or "0x0" (reverted) in the receipt status.
+    return { status: receipt.status === '0x1' || receipt.status === '1', raw: stdout };
+  } catch (err: unknown) {
+    const e = err as { stdout?: string; stderr?: string };
+    return { status: false, raw: (e.stdout ?? '') + (e.stderr ?? '') };
+  }
 }
 
 export interface ForgeTestResult {
@@ -141,4 +273,29 @@ export async function forgeTest(opts: {
     }
     return { passed: false, raw: (e.stdout ?? '') + (e.stderr ?? ''), json };
   }
+}
+
+/** Compile a Foundry project to artifacts; returns the deployed/creation bytecode for a contract. */
+export async function forgeBuildArtifact(opts: {
+  projectDir: string;
+  contractName: string;
+  timeoutMs?: number;
+  bin?: string;
+}): Promise<{ bytecode: string }> {
+  // contractName is used to build a filesystem path below; it must be a bare
+  // Solidity identifier so a crafted `../`-laden name cannot read another file.
+  assertSafeContractName(opts.contractName);
+  await pexec(opts.bin ?? 'forge', ['build'], {
+    cwd: opts.projectDir,
+    timeout: opts.timeoutMs ?? 180_000,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  // forge writes out/<File>.sol/<Contract>.json; read the creation bytecode.
+  const { readFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const artifactPath = join(opts.projectDir, 'out', `${opts.contractName}.sol`, `${opts.contractName}.json`);
+  const artifact = JSON.parse(await readFile(artifactPath, 'utf8')) as { bytecode?: { object?: string } };
+  const bytecode = artifact.bytecode?.object;
+  if (!bytecode) throw new Error(`no creation bytecode for ${opts.contractName}`);
+  return { bytecode };
 }
