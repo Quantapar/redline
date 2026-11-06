@@ -557,3 +557,20 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   measurement artifact of piping through `head`; the real exit is 1.)
 - Added 5 CLI tests pinning the gate's fail-closed behavior so a refactor can't
   silently open it. Suite 226 green across 10 packages.
+
+## 2026-11-06 — ARCHITECTURE.md accuracy pass
+
+- Audited ARCHITECTURE.md against the code (same pass as the README). Corrected
+  design-stated-as-fact claims to match the build:
+  - Pipeline diagram said "prepare (clone...)" and showed a "static analysis
+    (Slither, Aderyn)" step. prepare uses captured sources (no clone), and the
+    analyzer wrappers exist in packages/engine but are not wired into the hunt
+    (analyzerNotes is always empty). Reworded; analyzers noted as available-not-wired.
+  - "only changed + connected code" -> changed contracts (call-graph expansion planned).
+  - "Each scan runs in its own sealed, throwaway sandbox, wiped after" -> scoped to the
+    real fork path; today's simulation runs no untrusted code.
+  - "attacks are stored only briefly" -> encrypted at rest; expiry/retention is planned,
+    not enforced (the expiresAt field is on recipes and unused).
+  - Going-live gates: canDeploy/verify-deploy are real and fail closed; the on-chain ENS
+    lock and Safe guard are the planned extension. Added verify-deploy to the CLI list.
+- packages/gates and canDeploy confirmed to exist and be wired.

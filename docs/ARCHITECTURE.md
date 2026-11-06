@@ -28,23 +28,30 @@ create or cancel a red result.
 ## Scan pipeline (BullMQ)
 
 ```
-webhook -> queue scan -> prepare (clone, detect, diff)
-        -> static analysis (Slither, Aderyn)
+webhook -> queue scan -> prepare (captured sources, detect, diff)
         -> hunt (swarm, cheap models first, budget-capped)
         -> verify (referee council on candidates only)
         -> judge (panel)
         -> post check + live updates
 ```
 
-Incremental scans probe only changed + connected code. A hard per-scan budget cap
+`prepare` builds targets from the contract sources the GitHub App captured at the
+scanned commit (no local clone). Static-analysis wrappers (Slither, Aderyn) live in
+`packages/engine` and degrade gracefully, but are not yet wired to feed the hunt —
+`analyzerNotes` is currently empty. Incremental scans probe the contracts that
+changed (call-graph-connected expansion is planned). A hard per-scan budget cap
 (`BudgetGuard`) gates every model call.
 
 ## Misuse controls (mandatory)
 
 - Findings are visible to all; the **runnable attack is locked** until the requester
   proves they control the live contract (`decideUnlock`).
-- Each scan runs in its own sealed, throwaway sandbox, wiped after.
-- Customer artifacts are encrypted at rest; attacks are stored only briefly.
+- The real fork-based referee runs each attack in a sealed, throwaway sandbox
+  (`packages/engine` sandbox) that is wiped after. Today's deterministic simulation
+  executes no untrusted code, so it needs no sandbox; the sandbox activates with the
+  Foundry fork path.
+- Saved attacks are AES-256-GCM encrypted at rest with a customer-held key. (A
+  retention/expiry policy that deletes them after a window is planned, not yet enforced.)
 
 ## Subsystems
 
@@ -60,14 +67,16 @@ Incremental scans probe only changed + connected code. A hard per-scan budget ca
   bad candidate never sinking the whole scan. `watch-mode` turns a new hack into a recipe and
   re-tests every repo; `cancel` stops an in-flight scan.
 - **Going-live gates** (`packages/gates`) — `canDeploy` allows a deploy only against a complete,
-  green council attestation for that exact version, issued by a council key (ENS deploy lock); the
-  same decision backs a Safe transaction guard.
+  green council attestation for that exact version, issued by a council key. This logic is wired
+  and exposed through `redline verify-deploy` (which fails closed). Binding the council key to an
+  on-chain ENS deploy-lock and backing a Safe transaction guard with the same decision are the
+  planned on-chain extension, not yet wired.
 - **Data** (`packages/db`) — PostgreSQL via Drizzle. Saved attacks are AES-256-GCM encrypted at
   rest with a customer-held key.
 - **Surfaces** — `apps/web` (dashboard, live SSE scan room, finding, recipes, going-live),
   `apps/github-app` (Probot: opens a check, queues a scan, resolves the check red/green),
   `apps/mcp-server` (your own AI tool pulls a finding and writes the fix), and `packages/cli`
-  (`redline policy`, `redline scan`).
+  (`redline policy`, `redline scan`, `redline verify-deploy`).
 
 ## Audit trail
 
