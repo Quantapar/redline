@@ -765,3 +765,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   deterministic simulation. Added tests: preferSimulation always yields the sim engine,
   and without Foundry the factory never picks the real engine that can't run. +2 tests.
   Suite 257 green.
+
+## 2026-11-06 — cover the GitHub-check completion context
+
+- getScanCompletionContext + setScanCheckRun (both on the untested-exports list) assemble
+  the data the GitHub App uses to resolve a check when a scan finishes or fails — the
+  check run id, installation id, repo name, and findings. The QueueEvents handlers that
+  use them are skipped in unit tests, so they had no coverage, even after this session
+  added the failed-scan handler that depends on them. Added a db test asserting the
+  context shape for a real scan and null for an unknown one. +1 test. Suite 258 green.
