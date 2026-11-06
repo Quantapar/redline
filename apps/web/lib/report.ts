@@ -100,7 +100,7 @@ export function fixOrder<T extends Pick<ReportFinding, 'isRed' | 'consensus' | '
 
 /**
  * What "Copy fix for agent" puts on the clipboard: a self-contained brief a
- * coding agent (Claude Code, Cursor, Copilot) can act on, with the exploit that
+ * coding agent can act on, with the exploit that
  * proves it and Redline's drafted patch when there is one.
  */
 export function agentPrompt(repo: string, f: ReportFinding): string {

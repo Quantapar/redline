@@ -77,12 +77,12 @@ Not for me to build, parking them here so we don't forget:
 - Added a CI workflow (.github/workflows/ci.yml): Postgres + Redis services, typecheck + tests.
 
 ## Update (Foundry — exact step)
-The sandbox blocks every automated install path I tried (the `curl | bash` installer AND a direct
-binary download). To unlock the REAL fork-based council, **run this in the Claude Code prompt**
-(the `!` prefix runs it in this session so I can use the result):
+Foundry can't be installed automatically in a sandboxed environment (neither the `curl | bash`
+installer nor a direct binary download works there). To unlock the REAL fork-based council,
+**run this in a terminal**:
 
 ```
-! curl -L https://foundry.paradigm.xyz | bash && ~/.foundry/bin/foundryup
+curl -L https://foundry.paradigm.xyz | bash && ~/.foundry/bin/foundryup
 ```
 
 Once `forge` and `anvil` are on PATH, the engine's FoundryRefereeEngine takes over from the
