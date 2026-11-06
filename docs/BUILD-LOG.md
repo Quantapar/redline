@@ -809,3 +809,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   session's ~57 new tests (including many DB-backed ones) make no hidden assumptions about
   pre-existing data and clean up after themselves, so they will pass in CI, not just on a
   locally-accumulated database. The demo DB (redline) was untouched and remains healthy.
+
+## 2026-11-06 — property/fuzz test the cheatcode scanner (the two-room boundary)
+
+- The cheat detector is the security boundary; it had adversarial unit cases but no
+  property test. Added one that generates many obfuscations of every forbidden cheat
+  (whitespace around the dot, block/line comments, cross-line splits, the hevm alias,
+  bare-helper spacing) and asserts ALL are detected, plus Vm-interface/precompile-address
+  access in many forms (cast, handle alias, lowercase address, inline assembly), plus a
+  no-false-positives check on innocent lookalikes (dealSize, deploy(), myVm, VaultManager,
+  realStartHoax). All pass — the hardening holds across the obfuscation surface and does
+  not over-flag. +3 property tests. Suite 268 green.
