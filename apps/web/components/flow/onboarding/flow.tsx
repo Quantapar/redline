@@ -10,6 +10,8 @@ import { ConcisionLogo } from "@/components/flow/brand";
 import { SoundToggle } from "@/components/flow/ui/sound";
 import { FindBusiness } from "./find-business";
 import { ConfirmBusiness } from "./confirm-business";
+import { PickRepo } from "./pick-repo";
+import type { GithubAccount } from "@/lib/github-target";
 import { LiveRead } from "./live-read";
 import { Verdict } from "./verdict";
 import { Dots, SETUP_STEPS } from "./setup-shell";
@@ -29,6 +31,7 @@ export function OnboardingFlow() {
   const reduce = useReducedMotion();
   const [stage, setStage] = useState<Stage>("find");
   const [location, setLocation] = useState<Location | null>(null);
+  const [account, setAccount] = useState<GithubAccount | null>(null);
   const [email, setEmail] = useState("");
   const [decisions, setDecisions] = useState<FactDecisions>({});
   const [runKey, setRunKey] = useState(0);
@@ -108,11 +111,16 @@ export function OnboardingFlow() {
           className="flex-1"
         >
           {stage === "find" && (
-            // Connect hands off to GitHub to install the app; the later stages are
-            // still the prototype, reachable from the controls below
-            <FindBusiness />
+            <FindBusiness
+              onPick={(a) => {
+                setAccount(a);
+                go("confirm");
+              }}
+            />
           )}
-          {stage === "confirm" && (
+          {stage === "confirm" && account && <PickRepo account={account} onBack={() => go("find")} />}
+          {/* Reached from the prototype controls without a GitHub account */}
+          {stage === "confirm" && !account && (
             <ConfirmBusiness
               location={current}
               onChange={setLocation}

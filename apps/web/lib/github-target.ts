@@ -37,3 +37,42 @@ export function parseGithubTarget(input: string): GithubTarget | null {
   if (!REPO.test(rawRepo) || rawRepo === '.' || rawRepo === '..') return null;
   return { owner, repo: rawRepo };
 }
+
+/** What /api/github/lookup resolves a username or URL to. */
+export interface GithubAccount {
+  owner: { id: number; login: string; name: string | null; type: 'user' | 'organization'; avatarUrl: string; publicRepos: number };
+  repo: { id: number; fullName: string; description: string | null; private: boolean; language: string | null } | null;
+  installUrl: string | null;
+}
+
+/** One row of /api/github/repos. */
+export interface GithubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  description: string | null;
+  private: boolean;
+  language: string | null;
+  stars: number;
+  pushedAt: string | null;
+}
+
+/**
+ * The picker's order: Solidity repos first (that's what Redline attacks), then
+ * the most starred, then the most recently pushed.
+ */
+export function rankRepos<T extends Pick<GithubRepo, 'language' | 'stars' | 'pushedAt'>>(repos: T[]): T[] {
+  const contracts = (r: T) => (r.language === 'Solidity' ? 1 : 0);
+  const pushed = (r: T) => (r.pushedAt ? Date.parse(r.pushedAt) : 0);
+  return [...repos].sort((a, b) => contracts(b) - contracts(a) || b.stars - a.stars || pushed(b) - pushed(a));
+}
+
+/** Repos whose name or description contains every word of the query. */
+export function filterRepos<T extends Pick<GithubRepo, 'name' | 'description'>>(repos: T[], query: string): T[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return repos;
+  return repos.filter((r) => {
+    const hay = `${r.name} ${r.description ?? ''}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+}
