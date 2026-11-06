@@ -28,3 +28,4 @@ test-results/
 # Foundry deps for the vault fixture (restored by: forge install)
 fixtures/vault/lib/
 .next-dev/
+.vercel
