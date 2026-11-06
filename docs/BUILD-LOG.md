@@ -584,3 +584,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   not 'cancelled'. A scan cancelled elsewhere, whose stream missed the 'done' event,
   would leave the feed stuck on "Live" forever. Added 'cancelled' to the terminal
   check. +1 test (cancelled detected via the poll). Suite 227 green.
+
+## 2026-11-06 — rate-limit consistency across mutation endpoints
+
+- Audited rate limiting across the API. The expensive mutations (scans/run, fix,
+  watch) were limited, but two cheaper mutations — findings/[id]/status and
+  scans/[id]/cancel — were not. Both already have the same-origin CSRF guard (the
+  main protection) and input validation, so no critical hole, but for consistency all
+  mutations should be bounded. Added rate limiting to both (60/min status, 30/min
+  cancel) matching the established pattern.
+- Added 4 unit tests for the rate limiter itself (limit then 429, per-key isolation,
+  window reset via fake timers, client-key derivation). Suite 231 green.
