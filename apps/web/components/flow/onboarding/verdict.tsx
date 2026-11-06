@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useEffect, useId, useRef, useState, ViewTransition } from "react";
+import * as React from "react";
+import { startTransition, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, Copy, Lock } from "lucide-react";
 import { fixes, ranking, TOTAL_FIXES, type Fix, type Location } from "@/lib/flow/fleet";
@@ -18,6 +19,13 @@ import { notify } from "@/components/flow/notify";
 import { BusinessMark } from "@/components/flow/brand";
 import { GoogleAdsLogo, GoogleLogo, GoogleMapsLogo, InstagramLogo } from "@/components/flow/logos";
 import { cn } from "@/lib/flow/utils";
+
+// React's <ViewTransition> only ships in its canary/experimental builds, which
+// Next bundles only with experimental.viewTransition on. Without it the import
+// is undefined and the verdict crashed; fall back to rendering the children.
+const ViewTransition: React.ComponentType<{ children?: React.ReactNode; update?: string; default?: string }> =
+  (React as unknown as { ViewTransition?: React.ComponentType<{ children?: React.ReactNode; update?: string; default?: string }> })
+    .ViewTransition ?? (({ children }) => <>{children}</>);
 
 const SCORE = 51;
 

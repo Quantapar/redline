@@ -17,7 +17,6 @@ import type { GithubAccount, GithubRepo } from "@/lib/github-target";
 import { LiveRead } from "./live-read";
 import { Verdict } from "./verdict";
 import { Dots, SETUP_STEPS } from "./setup-shell";
-import type { FactDecisions } from "./types";
 import { cn } from "@/lib/flow/utils";
 
 type Stage = "find" | "confirm" | "scan" | "verdict";
@@ -38,7 +37,6 @@ export function OnboardingFlow() {
   const [connected, setConnected] = useState<{ repo: GithubRepo; installUrl: string } | null>(null);
   const [result, setResult] = useState<ScanProgress | null>(null);
   const [email, setEmail] = useState("");
-  const [decisions, setDecisions] = useState<FactDecisions>({});
   const [runKey, setRunKey] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [scrolled, setScrolled] = useState(false);
@@ -67,7 +65,6 @@ export function OnboardingFlow() {
   }
 
   function restartScan() {
-    setDecisions({});
     setRunKey((k) => k + 1);
     go("scan");
   }
@@ -160,8 +157,6 @@ export function OnboardingFlow() {
               elapsed={elapsed}
               email={email}
               onEmail={setEmail}
-              decisions={decisions}
-              onDecide={(id, state) => setDecisions((d) => ({ ...d, [id]: state }))}
               onDone={() => go("verdict")}
             />
           )}

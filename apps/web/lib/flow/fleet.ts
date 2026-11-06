@@ -24,15 +24,6 @@ export type Step = {
   end: number;
 };
 
-export type Fact = {
-  id: string;
-  step: StepId;
-  at: number;
-  label: string;
-  source: string;
-  conflict?: { question: string; options: [string, string] };
-};
-
 export type Location = {
   id: string;
   name: string;
@@ -186,68 +177,6 @@ export const ranking = {
   youAt: 30_000,
 };
 
-export const facts: Fact[] = [
-  {
-    id: "locations",
-    step: "google",
-    at: 3_600,
-    label: "4 contracts in the repository",
-    source: "Repository",
-  },
-  {
-    id: "rainey",
-    step: "website",
-    at: 7_200,
-    label: "withdraw() makes an external call",
-    source: "VaultCore.sol",
-  },
-  {
-    id: "ordering",
-    step: "website",
-    at: 12_200,
-    label: "ReentrancyGuard is imported but never applied",
-    source: "VaultCore.sol",
-  },
-  {
-    id: "congress-hours",
-    step: "website",
-    at: 15_800,
-    label: "State is updated after the external call",
-    source: "VaultCore.sol",
-    conflict: {
-      question: "Two referees disagree — is it exploitable as written?",
-      options: ["Reproduced on the fork", "Needs a specific setup"],
-    },
-  },
-  {
-    id: "loved-for",
-    step: "reviews",
-    at: 22_800,
-    label: "A reentrancy attack drains the vault",
-    source: "Referee council",
-  },
-  {
-    id: "competition",
-    step: "competitors",
-    at: 31_600,
-    label: "5 of 5 referees reproduced the theft",
-    source: "Mainnet fork",
-  },
-  {
-    id: "instagram",
-    step: "social",
-    at: 36_400,
-    label: "125.5 ETH left the vault for the attacker",
-    source: "Chain state",
-  },
-  {
-    id: "ads",
-    step: "ads",
-    at: 42_800,
-    label: "Verdict: RED — the money provably moved",
-    source: "Redline",
-  },
-];
 
 export type Fix = {
   id: string;
