@@ -8,6 +8,7 @@ import { PublicProofButton } from '@/components/public-proof-button';
 import { StatusBadge } from '@/components/status-badge';
 import { LockedAttack } from '@/components/locked-attack';
 import { redactAttack } from '@/lib/redact';
+import { highlightCode } from '@/lib/highlight-code';
 import { Icon } from '@/components/icon';
 import {
   Bug01Icon, LockedIcon, SourceCodeIcon, ArrowRight01Icon, Shield01Icon, Coins01Icon, AiBrain01Icon,
@@ -68,7 +69,7 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
               </span>
             </div>
             <div className="p-3">
-              {redacted ? <LockedAttack preview={redacted.preview} hiddenLines={redacted.hiddenLines} /> : <div className="px-2 py-6 text-center text-[13px] text-muted-foreground">No attack recorded.</div>}
+              {redacted ? <LockedAttack preview={redacted.preview} previewLines={highlightCode(redacted.preview.replace(/\n$/, ''), 'ts')} hiddenLines={redacted.hiddenLines} /> : <div className="px-2 py-6 text-center text-[13px] text-muted-foreground">No attack recorded.</div>}
             </div>
           </div>
         </div>
