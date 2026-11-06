@@ -410,3 +410,21 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   each, so a fixed bug cannot quietly come back — a reproduced one is flagged "Regression:". The save
   is guarded to the original discovery so they don't accumulate. New test covers the re-run.
 - Totals: 208 tests across 10 packages, all green.
+
+## 2026-11-06 — continued polish
+
+- **Regression test contract names.** Added `target_contract` to the
+  `regression_tests` table. When a red finding becomes a forever-test, the
+  real contract name is now stored with the saved attack instead of being
+  re-parsed from the forge source on each re-run (which failed when the test
+  had no literal `contract X` declaration). Re-run titles read e.g.
+  "Regression: reentrancy in EtherVault". Verified end-to-end: a reseed
+  populated `target_contract` = EtherVault / RewardToken on the two
+  forever-tests.
+- **Hydration warning on `<body>`.** A live browser check surfaced a single
+  dev-overlay error: a hydration mismatch caused by a browser extension
+  injecting `cz-shortcut-listen` onto `<body>` before React hydrates. The
+  `<html>` element already had `suppressHydrationWarning`; extended the same
+  guard to `<body>`. The error toast and console error are now gone. All
+  routes verified 200 server-side; console clean.
+- Full suite still green: 208 tests across 10 packages.
