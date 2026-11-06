@@ -674,3 +674,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   system's "one failure never sinks the batch" philosophy. Wrapped each repo in try/catch
   so the rollout continues; returns scansQueued + failed, with an optional onError hook.
   +1 test (one repo fails, the others still queue, recipe still added). Suite 247 green.
+
+## 2026-11-06 — scan-intake path-filter edge coverage
+
+- decideIntake's SOL/IGNORED filter decides what actually gets scanned, so a regression
+  there silently skips real contracts or scans dependencies. Verified the logic is
+  correct and added the tricky edges it wasn't pinning: a project's own src/libraries/
+  (not the dependency dir lib/) and a contract file merely NAMED Testable/Mock are
+  SCANNED; vendored lib/ and node_modules/, nested src/mocks/, and a capital-T src/Tests/
+  dir are IGNORED (case-insensitive). +2 tests. Suite 249 green.

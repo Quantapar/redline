@@ -34,6 +34,30 @@ describe('decideIntake', () => {
     const d = decideIntake({ ...base, action: 'push', prNumber: null, ref: 'refs/heads/wip' });
     expect(d.shouldScan).toBe(false);
   });
+
+  it('scans a real contract whose path only resembles an ignored one', () => {
+    // These must be SCANNED: a project's own libraries, and a contract file whose
+    // NAME contains "test"/"mock" but which is not in a test/mock directory.
+    const d = decideIntake({ ...base, changedFiles: [
+      'src/libraries/SafeMath.sol',   // libraries/ is not the dependency dir lib/
+      'src/TestableVault.sol',        // a filename, not a test/ directory
+      'contracts/MockRegistryClient.sol',
+    ] });
+    expect(d.solidityFiles).toEqual([
+      'src/libraries/SafeMath.sol', 'src/TestableVault.sol', 'contracts/MockRegistryClient.sol',
+    ]);
+  });
+
+  it('ignores dependency and nested test/mock directories, case-insensitively', () => {
+    const d = decideIntake({ ...base, changedFiles: [
+      'lib/forge-std/src/Test.sol',   // vendored dependency
+      'node_modules/@oz/Ownable.sol',
+      'src/mocks/MockToken.sol',      // nested mock dir
+      'src/Tests/Helper.sol',         // capital T, still a test dir
+      'src/RealVault.sol',            // the only one to scan
+    ] });
+    expect(d.solidityFiles).toEqual(['src/RealVault.sol']);
+  });
 });
 
 function finding(isRed: boolean, id: string): Finding {
