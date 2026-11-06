@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { createDb, schema, eq } from '@redline/db';
-import { redlineApp } from '../src/app.js';
+import { redlineApp, resolveScanCheck } from '../src/app.js';
+import { createScan, setScanCheckRun, insertCandidate, insertFinding } from '@redline/db';
+import { vi } from 'vitest';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgresql://manu@localhost:5432/redline_test';
 const handle = createDb(url);
@@ -110,5 +112,54 @@ describe('GitHub App pull_request handler', () => {
     await handlers.get('pull_request.opened')!(prContext({ files: ['README.md', 'package.json'] }));
     expect(await handle.db.select().from(schema.scans)).toHaveLength(0);
     expect(jobs).toHaveLength(0);
+  });
+});
+
+
+describe('resolveScanCheck — resolves the GitHub check when a scan ends', () => {
+  async function seedScanWithCheck(opts: { red: boolean; withCheckRun: boolean }) {
+    const n = Math.floor(Math.random() * 1e9);
+    const [acc] = await handle.db.insert(schema.accounts).values({ githubLogin: `rsc-${n}`, githubId: n }).returning();
+    const [inst] = await handle.db.insert(schema.installations).values({ accountId: acc!.id, githubInstallationId: n }).returning();
+    const [repo] = await handle.db.insert(schema.repositories).values({ installationId: inst!.id, githubRepoId: n, fullName: `acme/vault-${n}` }).returning();
+    const scan = await createScan(handle.db, { repositoryId: repo!.id, trigger: 'pull-request', commitSha: 'rsc', prNumber: 1 });
+    if (opts.withCheckRun) await setScanCheckRun(handle.db, scan.id, 7777);
+    if (opts.red) {
+      const c = await insertCandidate(handle.db, { scanId: scan.id, hunterModel: 'm', weaknessClass: 'reentrancy', targetContract: 'V', summary: 's', forgeTest: 'f' });
+      await insertFinding(handle.db, { scanId: scan.id, candidateId: c.id, weaknessClass: 'reentrancy', title: 'Reentrancy in V', plainSentence: 'p', consensus: 'reproduced', isRed: true, agreementCount: 3, refereeCount: 3 });
+    }
+    return scan;
+  }
+  const fakeAuth = (update: ReturnType<typeof vi.fn>) => async () => ({ checks: { update } });
+
+  it('fails the check on a completed scan with a red finding', async () => {
+    const scan = await seedScanWithCheck({ red: true, withCheckRun: true });
+    const update = vi.fn().mockResolvedValue({});
+    const r = await resolveScanCheck({ db: handle.db, scanId: scan.id, authFor: fakeAuth(update), appUrl: 'https://x', outcome: 'completed' });
+    expect(r).toBe('resolved');
+    expect(update).toHaveBeenCalledOnce();
+    expect(update.mock.calls[0]![0]).toMatchObject({ check_run_id: 7777, conclusion: 'failure', status: 'completed' });
+  });
+
+  it('passes the check on a completed scan with no red finding', async () => {
+    const scan = await seedScanWithCheck({ red: false, withCheckRun: true });
+    const update = vi.fn().mockResolvedValue({});
+    await resolveScanCheck({ db: handle.db, scanId: scan.id, authFor: fakeAuth(update), appUrl: 'https://x', outcome: 'completed' });
+    expect(update.mock.calls[0]![0]).toMatchObject({ conclusion: 'success' });
+  });
+
+  it('resolves a FAILED scan to neutral (never blocks the merge, never hangs)', async () => {
+    const scan = await seedScanWithCheck({ red: false, withCheckRun: true });
+    const update = vi.fn().mockResolvedValue({});
+    await resolveScanCheck({ db: handle.db, scanId: scan.id, authFor: fakeAuth(update), appUrl: 'https://x', outcome: 'failed' });
+    expect(update.mock.calls[0]![0]).toMatchObject({ conclusion: 'neutral' });
+  });
+
+  it('skips (no octokit call) when there is no check run or no scan id', async () => {
+    const scan = await seedScanWithCheck({ red: false, withCheckRun: false });
+    const update = vi.fn();
+    expect(await resolveScanCheck({ db: handle.db, scanId: scan.id, authFor: fakeAuth(update), appUrl: 'https://x', outcome: 'completed' })).toBe('skipped');
+    expect(await resolveScanCheck({ db: handle.db, scanId: undefined, authFor: fakeAuth(update), appUrl: 'https://x', outcome: 'completed' })).toBe('skipped');
+    expect(update).not.toHaveBeenCalled();
   });
 });

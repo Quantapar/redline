@@ -6,6 +6,52 @@ import { QueueEvents } from 'bullmq';
 import { decideIntake, buildCheckOutput, type IntakeEvent } from './scan-intake.js';
 import type { Finding } from '@redline/shared';
 
+type Database = ReturnType<typeof createDb>['db'];
+
+/** A GitHub client that can resolve a check run (the slice we use). The arg type is
+ *  `any` so the real Octokit (with its own precise params) and a test fake both fit. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface CheckUpdater {
+  checks: { update: (args: any) => Promise<unknown> };
+}
+
+/**
+ * Resolve a scan's GitHub check run once the scan finishes or fails. On
+ * 'completed' the conclusion comes from the findings (red -> failure); on
+ * 'failed' it is neutral — a scan that errored proved nothing, so it must not
+ * fail the merge, but must not hang either. Returns whether it resolved or
+ * skipped (no scan, no check run, or no installation). Extracted and exported so
+ * this wiring — not just buildCheckOutput — is unit-tested.
+ */
+export async function resolveScanCheck(opts: {
+  db: Database;
+  scanId: string | undefined;
+  authFor: (installationId: number) => Promise<CheckUpdater>;
+  appUrl: string;
+  outcome: 'completed' | 'failed';
+  log?: (msg: string) => void;
+}): Promise<'resolved' | 'skipped'> {
+  if (!opts.scanId) return 'skipped';
+  const ctx = await getScanCompletionContext(opts.db, opts.scanId);
+  if (!ctx || !ctx.checkRunId || ctx.installationId == null) return 'skipped';
+  const [owner, repo] = ctx.repoFullName.split('/');
+  const octokit = await opts.authFor(ctx.installationId);
+  const out = opts.outcome === 'completed'
+    ? buildCheckOutput(ctx.findings as unknown as Finding[], opts.appUrl)
+    : {
+        conclusion: 'neutral' as const,
+        title: 'Redline scan could not complete',
+        summary: 'The scan errored before reaching a verdict. This does not block the merge; re-run the scan to try again.',
+      };
+  await octokit.checks.update({
+    owner: owner!, repo: repo!, check_run_id: ctx.checkRunId,
+    status: 'completed', conclusion: out.conclusion, completed_at: new Date().toISOString(),
+    output: { title: out.title, summary: out.summary },
+  });
+  opts.log?.(`[redline] resolved check ${ctx.checkRunId} for scan ${opts.scanId}: ${out.conclusion}`);
+  return 'resolved';
+}
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 // Bounds on attacker-influenced PR input (changed-file list and file contents).
@@ -41,52 +87,19 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
   // When a scan completes (in the separate worker process), resolve its check.
   if (!deps.skipCompletion) {
   const events = new QueueEvents(SCAN_QUEUE, { connection: createRedis() });
+  const scanIdFor = async (jobId: string) => (await queue.getJob(jobId))?.data.scanId as string | undefined;
+  const authFor = (installationId: number) => app.auth(installationId);
   events.on('completed', async ({ jobId }: { jobId: string }) => {
-    try {
-      const job = await queue.getJob(jobId);
-      const scanId = job?.data.scanId as string | undefined;
-      if (!scanId) return;
-      const ctx = await getScanCompletionContext(db, scanId);
-      if (!ctx || !ctx.checkRunId || ctx.installationId == null) return;
-      const [owner, repo] = ctx.repoFullName.split('/');
-      const octokit = await app.auth(ctx.installationId);
-      const out = buildCheckOutput(ctx.findings as unknown as Finding[], APP_URL);
-      await octokit.checks.update({
-        owner: owner!, repo: repo!, check_run_id: ctx.checkRunId,
-        status: 'completed', conclusion: out.conclusion, completed_at: new Date().toISOString(),
-        output: { title: out.title, summary: out.summary },
-      });
-      app.log.info(`[redline] resolved check ${ctx.checkRunId} for scan ${scanId}: ${out.conclusion}`);
-    } catch (err) {
-      app.log.error(`[redline] failed to resolve check: ${String(err)}`);
-    }
+    try { await resolveScanCheck({ db, scanId: await scanIdFor(jobId), authFor, appUrl: APP_URL, outcome: 'completed', log: (m) => app.log.info(m) }); }
+    catch (err) { app.log.error(`[redline] failed to resolve check: ${String(err)}`); }
   });
-
   // A scan job that errors fires 'failed', not 'completed'. Without this, the check
   // created as in_progress would hang forever and (under branch protection) block the
-  // PR over an infrastructure hiccup. Resolve it to neutral: a scan that errored
-  // proved nothing, so it must not fail the merge, but it must not hang either.
+  // PR over an infrastructure hiccup. resolveScanCheck sets it to neutral: a scan that
+  // errored proved nothing, so it must not fail the merge, but it must not hang either.
   events.on('failed', async ({ jobId }: { jobId: string }) => {
-    try {
-      const job = await queue.getJob(jobId);
-      const scanId = job?.data.scanId as string | undefined;
-      if (!scanId) return;
-      const ctx = await getScanCompletionContext(db, scanId);
-      if (!ctx || !ctx.checkRunId || ctx.installationId == null) return;
-      const [owner, repo] = ctx.repoFullName.split('/');
-      const octokit = await app.auth(ctx.installationId);
-      await octokit.checks.update({
-        owner: owner!, repo: repo!, check_run_id: ctx.checkRunId,
-        status: 'completed', conclusion: 'neutral', completed_at: new Date().toISOString(),
-        output: {
-          title: 'Redline scan could not complete',
-          summary: 'The scan errored before reaching a verdict. This does not block the merge; re-run the scan to try again.',
-        },
-      });
-      app.log.info(`[redline] resolved check ${ctx.checkRunId} as neutral (scan ${scanId} failed)`);
-    } catch (err) {
-      app.log.error(`[redline] failed to resolve a failed scan's check: ${String(err)}`);
-    }
+    try { await resolveScanCheck({ db, scanId: await scanIdFor(jobId), authFor, appUrl: APP_URL, outcome: 'failed', log: (m) => app.log.info(m) }); }
+    catch (err) { app.log.error(`[redline] failed to resolve a failed scan's check: ${String(err)}`); }
   });
   }
 

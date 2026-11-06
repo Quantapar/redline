@@ -820,3 +820,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   no-false-positives check on innocent lookalikes (dealSize, deploy(), myVm, VaultManager,
   realStartHoax). All pass — the hardening holds across the obfuscation surface and does
   not over-flag. +3 property tests. Suite 268 green.
+
+## 2026-11-06 — extract + test the GitHub check-resolution wiring
+
+- The 'completed' and 'failed' QueueEvents handlers were near-duplicates and, because the
+  QueueEvents listener is skipped in unit tests (skipCompletion), their wiring was
+  untested — including the failed->neutral handler added this session. Extracted the
+  shared logic into an exported resolveScanCheck(db, scanId, authFor, outcome) and made
+  both handlers thin wrappers (DRY). Tested with a fake octokit: completed+red -> failure,
+  completed+clean -> success, failed -> neutral, and skipped (no check run / no scan id)
+  makes no octokit call. +4 tests. Suite 272 green.
