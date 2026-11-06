@@ -21,7 +21,7 @@ export async function gitPrepare(scan: typeof schema.scans.$inferSelect): Promis
   const targets: HuntTarget[] = [];
   for (const t of stored) {
     if (!t.source) continue; // no content captured -> nothing to attack
-    const contractName = t.contract || extractContractName(t.source, 'Unknown');
+    const contractName = t.contract || extractContractName(t.source, 'Unknown', t.file);
     // SECURITY: t.file is a PR-author-controlled path. It is safe to store and to
     // use as a GitHub API path (GitHub resolves it within the repo). When it is
     // joined into a local write path for the Foundry src-prep step, it MUST go
