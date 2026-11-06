@@ -112,7 +112,10 @@ EOA** against the fork (not as a `forge test`), where the cheatcode precompile i
 focused engine change I can build once Foundry is available to verify it end-to-end. Until then, a
 red from the real fork path is defense-in-depth, not a full proof. Full write-up in SECURITY.md.
 **Nothing ships a false guarantee today** — flagging so you can decide the priority of this
-hardening relative to the demo.
+hardening relative to the demo. One more thing that engine step must do when it writes each
+contract's source into the sandbox project: the file path comes from the PR author, so it has to
+be normalised and checked for traversal (`..`, absolute paths) before being joined into a local
+write path, or a crafted filename could escape the project dir. Noted in code at prepare.ts.
 
 ## Update (referee independence)
 - For the REAL fork-based council (once Foundry is installed), referees should fork from

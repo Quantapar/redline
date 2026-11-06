@@ -483,3 +483,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   in the finding server component, redacted before the client boundary; no API route
   returns it and no reveal endpoint exists, so the runnable attack never leaves the
   server. SECURITY.md's promise holds. No change needed.
+
+## 2026-11-06 — audit: GitHub App intake bounds
+
+- **Bounded the PR intake.** fetchChangedTargets fetched and stored every changed
+  .sol file with no cap on count or size — a PR author (attacker-influenced input)
+  could change thousands of files or ship an enormous one, exhausting GitHub API
+  calls and bloating the scan row. Capped at 50 files and 256KB per source.
+- **Path-traversal note.** The PR-controlled file path is safe as a GitHub API path
+  and for storage, but flagged in code (prepare.ts) and NEED-FROM-YOU that the future
+  Foundry src-prep must normalise it and reject traversal before any local disk write.
+- Suite: 218 green across 10 packages.

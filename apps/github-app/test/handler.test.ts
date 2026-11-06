@@ -76,6 +76,33 @@ describe('GitHub App pull_request handler', () => {
     expect(jobs[0]!.scanId).toBe(scans[0]!.id);
   });
 
+  it('bounds a hostile PR: caps file count and source size stored on the scan', async () => {
+    await handle.db.delete(schema.scans);
+    const { app, handlers } = fakeApp();
+    redlineApp(app as never, { db: handle.db, queue: fakeQueue, skipCompletion: true });
+    const files = Array.from({ length: 200 }, (_, i) => `src/C${i}.sol`);
+    const huge = '// x\ncontract Vault {}\n' + 'A'.repeat(500_000);
+    const ctx = {
+      octokit: {
+        paginate: async () => files.map((filename) => ({ filename })),
+        pulls: { listFiles: () => {} },
+        repos: { getContent: async () => ({ data: { content: b64(huge), encoding: 'base64' } }) },
+        checks: { create: async () => ({ data: { id: 999 } }) },
+      },
+      repo: () => ({ owner: 'acme', repo: 'vault' }),
+      payload: {
+        pull_request: { number: 9, head: { ref: 'feature/big', sha: 'bigsha' }, base: { sha: 'basesha' } },
+        repository: { owner: { login: 'acme', id: 1 }, id: 100, full_name: 'acme/vault', default_branch: 'main' },
+        installation: { id: 55 },
+      },
+    };
+    await handlers.get('pull_request.opened')!(ctx);
+    const [scan] = await handle.db.select().from(schema.scans);
+    const targets = scan!.changedTargets as { source: string }[];
+    expect(targets.length).toBeLessThanOrEqual(50);          // file count capped
+    expect(targets[0]!.source.length).toBeLessThanOrEqual(256_000); // source size capped
+  });
+
   it('does not scan when no Solidity contracts changed', async () => {
     await handle.db.delete(schema.scans);
     const { app, handlers } = fakeApp();

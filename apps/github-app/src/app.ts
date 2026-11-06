@@ -8,6 +8,12 @@ import type { Finding } from '@redline/shared';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
+// Bounds on attacker-influenced PR input (changed-file list and file contents).
+// A PR with thousands of .sol files, or a single enormous file, must not be able
+// to exhaust GitHub API calls or bloat the scan row. Generous for real repos.
+const MAX_CHANGED_FILES = 50;
+const MAX_SOURCE_CHARS = 256_000;
+
 interface RepoMeta {
   ownerLogin: string;
   ownerId: number;
@@ -83,12 +89,17 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
     files: string[],
   ) {
     const targets: { file: string; contract: string; source: string; changedFunctions: string[]; connectedFunctions: string[] }[] = [];
-    for (const file of files) {
+    // A PR author controls the changed-file list and contents. Bound both so a
+    // huge PR cannot exhaust GitHub API calls or bloat the scan row: cap the
+    // number of files fetched and the size of each source we store.
+    for (const file of files.slice(0, MAX_CHANGED_FILES)) {
       try {
         const res = await octokit.repos.getContent({ ...repoRef, path: file, ref });
         const data = res.data as { content?: string; encoding?: string };
         if (!data.content) continue;
-        const source = Buffer.from(data.content, (data.encoding as BufferEncoding) ?? 'base64').toString('utf8');
+        const source = Buffer.from(data.content, (data.encoding as BufferEncoding) ?? 'base64')
+          .toString('utf8')
+          .slice(0, MAX_SOURCE_CHARS);
         const contract = source.match(/contract\s+(\w+)/)?.[1] ?? '';
         targets.push({ file, contract, source, changedFunctions: [], connectedFunctions: [] });
       } catch {
