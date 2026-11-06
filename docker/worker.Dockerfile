@@ -15,5 +15,5 @@ RUN pnpm install --frozen-lockfile
 
 FROM build AS run
 ENV NODE_ENV=production
-EXPOSE 0
+# The worker is a queue consumer; it serves no HTTP, so it exposes no port.
 CMD ["pnpm", "--filter", "@redline/worker", "start"]

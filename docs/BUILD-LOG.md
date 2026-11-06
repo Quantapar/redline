@@ -703,3 +703,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   next-build-only regression (an SSR error typecheck misses) could merge. Added a
   "Build web" step. Re-verified the production build passes after this session's web
   changes (health, stream, status/cancel routes, components).
+
+## 2026-11-06 — Docker deployment audit
+
+- Audited the Docker path (how the real Foundry-based council ships). Mostly correct:
+  web runs next start (production) and pushes the schema on boot, the worker runs its
+  processor with Foundry installed and on PATH in the run stage, ARCHIVE_RPC_URLS matches
+  what the code reads (it accepts URLS or URL), and .dockerignore correctly excludes
+  apps/web/.env.local and .next from the build context — no secrets reach the image.
+- Fixed one incorrectness: the worker Dockerfile had `EXPOSE 0` (meaningless — a queue
+  consumer serves no HTTP). Removed it.
