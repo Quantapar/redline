@@ -13,8 +13,10 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: redline
-          POSTGRES_PASSWORD: redline
           POSTGRES_DB: redline_test
+          # Ephemeral CI-only database reachable solely from this runner; trust-auth
+          # so no password is hardcoded (keeps secret scanners quiet, nothing to leak).
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
@@ -24,8 +26,8 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
     env:
-      DATABASE_URL: postgresql://redline:redline@localhost:5432/redline_test
-      TEST_DATABASE_URL: postgresql://redline:redline@localhost:5432/redline_test
+      DATABASE_URL: postgresql://redline@localhost:5432/redline_test
+      TEST_DATABASE_URL: postgresql://redline@localhost:5432/redline_test
       REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
