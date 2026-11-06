@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { gh, githubToken, installUrl, isRateLimited } from '@/lib/github-api';
+import { gh, githubToken, installUrl, isRateLimited, viewerGithub } from '@/lib/github-api';
 import { parseGithubTarget, rankRepos, type GithubRepo } from '@/lib/github-target';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
 
@@ -30,12 +30,16 @@ export async function GET(req: Request) {
   const target = parseGithubTarget(new URL(req.url).searchParams.get('owner') ?? '');
   if (!target) return NextResponse.json({ error: 'invalid' }, { status: 400 });
 
-  const token = await githubToken();
+  // Your own account, signed in with GitHub: include your private repos too
+  const viewer = await viewerGithub().catch(() => null);
+  const own = viewer != null && viewer.login.toLowerCase() === target.owner.toLowerCase();
+  const token = own ? viewer.token : await githubToken();
   const owner = encodeURIComponent(target.owner);
+  const listPath = own ? '/user/repos?affiliation=owner&visibility=all' : `/users/${owner}/repos?type=owner`;
   try {
     const all: GhRepo[] = [];
     for (let page = 1; page <= MAX_PAGES; page++) {
-      const res = await gh<GhRepo[]>(`/users/${owner}/repos?type=owner&sort=pushed&per_page=${PER_PAGE}&page=${page}`, token);
+      const res = await gh<GhRepo[]>(`${listPath}&sort=pushed&per_page=${PER_PAGE}&page=${page}`, token);
       if (res.status === 404) return NextResponse.json({ error: 'not_found' }, { status: 404 });
       if (isRateLimited(res.status)) return NextResponse.json({ error: 'github_rate_limited' }, { status: 503 });
       if (!res.data) return NextResponse.json({ error: 'github_error' }, { status: 502 });

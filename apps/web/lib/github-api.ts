@@ -24,6 +24,17 @@ export async function githubToken(): Promise<string | null> {
   return process.env.GITHUB_TOKEN || (await viewerToken());
 }
 
+/**
+ * The signed-in viewer's own GitHub login and token, or null. Lets the
+ * onboarding list their private repositories and skip pasting a username.
+ */
+export async function viewerGithub(): Promise<{ login: string; token: string } | null> {
+  const token = await viewerToken();
+  if (!token) return null;
+  const me = await gh<{ login: string }>('/user', token).catch(() => null);
+  return me?.data ? { login: me.data.login, token } : null;
+}
+
 export async function gh<T>(path: string, token: string | null): Promise<{ status: number; data: T | null }> {
   const res = await fetch(`https://api.github.com${path}`, {
     headers: {

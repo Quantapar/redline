@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Search } from "lucide-react";
 import { EASE_EXIT, EASE_OUT } from "@/lib/flow/motion";
@@ -11,6 +11,7 @@ import { PendingButton } from "./pending-button";
 import { GithubMark } from "./github-mark";
 import { Spinner } from "@/components/flow/ui/spinner";
 import { Input } from "@/components/flow/ui/input";
+import { Button } from "@/components/flow/ui/button";
 import { cn } from "@/lib/flow/utils";
 
 type Resolved = GithubAccount;
@@ -56,8 +57,55 @@ export function FindBusiness({ onPick }: { onPick: (account: GithubAccount) => v
   const [query, setQuery] = useState("");
   const [lookup, setLookup] = useState<Lookup>({ state: "idle" });
   const [picked, setPicked] = useState(false);
+  // Waiting on the GitHub sign-in tab opened by "Connect GitHub"
+  const [githubTab, setGithubTab] = useState(false);
+  const onPickRef = useRef(onPick);
+  onPickRef.current = onPick;
 
   const q = query.trim();
+
+  // The sign-in tab reports which GitHub account connected; take it straight to
+  // that account's repositories, no pasting
+  useEffect(() => {
+    let cancelled = false;
+    async function connected(data: unknown) {
+      const msg = data as { type?: string; login?: unknown } | null;
+      if (msg?.type !== "github-connected" || typeof msg.login !== "string") return;
+      const login = msg.login;
+      setQuery(login);
+      setPicked(false);
+      try {
+        const res = await fetch(`/api/github/lookup?q=${encodeURIComponent(login)}`);
+        if (res.ok && !cancelled) return onPickRef.current((await res.json()) as Resolved);
+      } catch {
+        // Falls back to the typed lookup below, already filled in
+      }
+      if (!cancelled) setGithubTab(false);
+    }
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("redline-github");
+      channel.onmessage = (e) => connected(e.data);
+    } catch {
+      // No BroadcastChannel: the opener message below still arrives
+    }
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin === window.location.origin) connected(e.data);
+    };
+    window.addEventListener("message", onMessage);
+    return () => {
+      cancelled = true;
+      channel?.close();
+      window.removeEventListener("message", onMessage);
+    };
+  }, []);
+
+  function connectGithub() {
+    setGithubTab(true);
+    const tab = window.open("/connect/github", "_blank");
+    // Pop-up blocked: sign in in this tab; it lands back on the onboarding
+    if (!tab) window.location.assign("/connect/github");
+  }
 
   // Resolve what's typed against GitHub, once typing pauses. A newer query aborts
   // the older request, so a slow answer can never overwrite a fresh one.
@@ -174,8 +222,25 @@ export function FindBusiness({ onPick }: { onPick: (account: GithubAccount) => v
             aria-expanded={open}
             aria-controls="find-results"
             aria-describedby="github-target-hint"
-            className="h-12 rounded-[12px] bg-card pr-3 pl-10 text-base md:text-base [&::-webkit-search-cancel-button]:hidden"
+            className={cn(
+              "h-12 rounded-[12px] bg-card pl-10 text-base md:text-base [&::-webkit-search-cancel-button]:hidden",
+              q ? "pr-3" : "pr-44",
+            )}
           />
+          {/* No username to paste? Sign in with GitHub instead, in a new tab */}
+          {!q && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={connectGithub}
+              aria-busy={githubTab || undefined}
+              className="absolute top-1/2 right-2.5 -translate-y-1/2"
+            >
+              {githubTab ? <Spinner className="size-3.5" /> : <GithubMark className="size-3.5" />}
+              {githubTab ? "Waiting for GitHub" : "Connect GitHub"}
+            </Button>
+          )}
 
           {/* The result floats over the page like autocomplete, so Connect never moves */}
           <div id="find-results" aria-live="polite" className="absolute inset-x-0 top-full z-20 mt-2">
