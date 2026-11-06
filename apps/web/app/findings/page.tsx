@@ -7,27 +7,51 @@ import { Icon } from '@/components/icon';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
 import { Bug01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { WEAKNESS_LABEL, SEVERITY_HUE, CONSENSUS_LABEL, timeAgo } from '@/lib/format';
+import { Head } from '@/components/overlay/ui';
 
 export const dynamic = 'force-dynamic';
 
-export default async function FindingsPage() {
-  const findings = await listAllFindings();
+export default async function FindingsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q } = await searchParams;
+  const term = (q ?? '').trim().toLowerCase();
+  const all = await listAllFindings();
+  const findings = term
+    ? all.filter(({ finding, repoName }) =>
+        [
+          WEAKNESS_LABEL[finding.weaknessClass] ?? finding.weaknessClass,
+          finding.weaknessClass,
+          finding.title,
+          finding.plainSentence,
+          finding.severity ?? '',
+          repoName,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(term),
+      )
+    : all;
   const red = findings.filter((f) => f.finding.isRed);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Findings</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          {red.length} red {red.length === 1 ? 'alarm' : 'alarms'}, each a theft reproduced by the council. The rest were searched and did not reproduce.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <Head
+        title="Findings"
+        meta={
+          term
+            ? `${findings.length} ${findings.length === 1 ? 'match' : 'matches'} for “${q}”.`
+            : `${red.length} red ${red.length === 1 ? 'alarm' : 'alarms'}, each a theft reproduced by the council. The rest were searched and did not reproduce.`
+        }
+      />
       {findings.length === 0 ? (
         <Empty className="rounded-xl border border-border py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon"><Icon icon={Bug01Icon} size={22} /></EmptyMedia>
-            <EmptyTitle>No findings yet</EmptyTitle>
-            <EmptyDescription>Run a scan on a repository. A finding appears here only when the council reproduces a theft.</EmptyDescription>
+            <EmptyTitle>{term ? 'No findings match' : 'No findings yet'}</EmptyTitle>
+            <EmptyDescription>
+              {term
+                ? 'Nothing matched your search. Try a weakness name, a repository, or a severity.'
+                : 'Run a scan on a repository. A finding appears here only when the council reproduces a theft.'}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
