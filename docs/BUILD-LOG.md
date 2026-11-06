@@ -953,3 +953,28 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   over to it (vs forge test) needs candidates as deployable attackers + an end-to-end run on a real
   archive RPC (item #5). Until then the forge-test path stays defense-in-depth; the broadcast path
   is a full proof where it runs.
+
+## 2026-11-06 — referee project-prep (real compile) + GitHub App live end-to-end
+
+- GitHub App "Redline by Quantapar" registered, installed on Quantapar/redline, and wired:
+  index.ts loads the repo-root .env and maps GITHUB_* -> Probot's APP_ID/PRIVATE_KEY_PATH/
+  WEBHOOK_SECRET/WEBHOOK_PROXY_URL; dotenv + smee-client added so a smee channel auto-proxies.
+  Verified: a real PR (#1) posts the "Redline — proof, not opinion" check end-to-end.
+- prepareRefereeProject (packages/engine/src/project.ts): builds a throwaway Foundry project from
+  the PR's actual contracts + a cached forge-std, hardened foundry.toml (ffi=false, fs_permissions=[]),
+  every PR-author path run through the safeProjectPath traversal guard. Wired into the pipeline so
+  the referee compiles the stripped attack against the real contract under review. FoundryRefereeEngine
+  now isolates each referee into its own temp run dir (shared src/lib via symlink).
+- Honest architectural finding: the forge-test referee strips cheats and runs the plain transaction,
+  so a cheat-FUNDED attack (vm.deal) cannot reproduce -> did-not-move, never a false red (two-room
+  guarantee working). It can produce a real red only for exploits that need no attacker funding;
+  stake-requiring exploits are the broadcast engine's job (runBroadcastExploit, proven in
+  broadcast.test.ts). Wiring broadcast into the live council + hunters emitting deployable attackers
+  is the remaining architecture for automatic reds on arbitrary stake-requiring PRs.
+- Independent review (2nd) confirmed path-safety + isolation sound/fail-closed; fixed its findings:
+  temp-dir leak on throw (cleanup in catch), forge-std cache populate race (atomic staging+rename),
+  one-bad-path-fails-whole-scan (skip the bad target), toml hardening guaranteed (write FOUNDRY_TOML
+  directly in the run dir), pipeline cleanup moved to finally.
+- Also fixed a pre-existing CI bug (pnpm/action-setup "Multiple versions" vs packageManager) and
+  removed a secret-scanner-flagged hardcoded test-db password from CI/compose.
+- 297 tests across 10 packages; web build passes.

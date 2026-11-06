@@ -5,7 +5,7 @@ import {
   type Database, setScanStatus, getScan, getRepository, insertCandidate, insertRefereeRuns,
   insertFinding, insertRegressionTest, listActiveRegressionTests, listRecipes, encrypt, decrypt, schema,
 } from '@redline/db';
-import { runCouncil, type RefereeEngine, type CouncilDispatch } from '@redline/engine';
+import { runCouncil, prepareRefereeProject, type RefereeEngine, type CouncilDispatch } from '@redline/engine';
 import { huntSwarm, type RouterClient, type HuntTarget } from '@redline/hunters';
 import { judge } from './judge.js';
 import { noopEmit, type EmitFn } from './events.js';
@@ -157,7 +157,17 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
 
   // ---- Verify (council) ----
   await setStatus('verifying');
-  const dispatch: CouncilDispatch = deps.council ?? DEFAULT_COUNCIL_DISPATCH;
+  // Build a throwaway Foundry project (changed contracts + forge-std) the real
+  // referee compiles the stripped attack against. Cheap once forge-std is cached;
+  // the simulation engine ignores it. A failure here must not sink the scan.
+  const refProject = await prepareRefereeProject(
+    targets.filter((t) => t.source).map((t) => ({ file: t.filePath, source: t.source })),
+  ).catch(() => null);
+  try {
+  const baseDispatch = deps.council ?? DEFAULT_COUNCIL_DISPATCH;
+  const dispatch: CouncilDispatch = refProject
+    ? { ...baseDispatch, projectDir: refProject.projectDir }
+    : baseDispatch;
   const priorKeys = new Set<string>();
 
   for (const { domain: c, dbId, isRegression } of dbCandidates) {
@@ -242,6 +252,11 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
       // One bad candidate must not sink the whole scan; record and move on.
       emit({ type: 'log', scanId, message: `candidate verification failed: ${String(err).slice(0, 160)}`, at: now() });
     }
+  }
+
+  } finally {
+    // The prepared project is throwaway; always drop it, even on an early throw.
+    if (refProject) await refProject.cleanup().catch(() => undefined);
   }
 
   // ---- Judge + complete ----

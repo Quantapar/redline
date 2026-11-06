@@ -1,10 +1,13 @@
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, mkdtemp, cp, symlink, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Candidate, RefereeRun, BalanceDelta } from '@redline/shared';
 import type { RefereeEngine, RefereeInput } from './referee.js';
 import { stripForReferee, scanCheats } from './cheatcodes.js';
 import { attackerGained } from '@redline/shared';
 import { detectFoundry, forgeTest } from './foundry.js';
+import { FOUNDRY_TOML } from './project.js';
 
 export function wrapTest(candidate: Candidate, cleaned: string, contractName: string): string {
   if (/contract\s+\w+\s+is\s+Test/.test(cleaned) || /contract\s+\w+Test/.test(cleaned)) return cleaned;
@@ -76,14 +79,32 @@ export class FoundryRefereeEngine implements RefereeEngine {
     }
 
     const testName = `Redline_${input.refereeName}`;
+    // Each referee runs in its own throwaway working dir that shares the prepared
+    // base project's src/ and lib/ (forge-std) by symlink but holds only this
+    // referee's test. Concurrent referees then never compile or clobber each
+    // other's attack files, and a compile error in one cannot fail the others.
+    let runDir: string | null = null;
     try {
-      const dir = join(input.projectDir, 'test');
+      runDir = await mkdtemp(join(tmpdir(), 'redline-run-'));
+      // Write the hardened config directly (ffi off, no fs access) rather than
+      // copying the base's, so the blast-radius floor is guaranteed for every run.
+      await writeFile(join(runDir, 'foundry.toml'), FOUNDRY_TOML, 'utf8');
+      for (const sub of ['src', 'lib']) {
+        const from = join(input.projectDir, sub);
+        if (!existsSync(from)) continue;
+        try {
+          await symlink(from, join(runDir, sub), 'dir');
+        } catch {
+          await cp(from, join(runDir, sub), { recursive: true });
+        }
+      }
+      const dir = join(runDir, 'test');
       await mkdir(dir, { recursive: true });
       const wrapped = wrapTest(input.candidate, cleaned, input.candidate.targetContract);
       await writeFile(join(dir, `${testName}.t.sol`), wrapped, 'utf8');
 
       const result = await forgeTest({
-        projectDir: input.projectDir,
+        projectDir: runDir,
         matchTest: 'test',
         forkUrl: input.forkUrl,
         forkBlock: input.forkBlock,
@@ -117,6 +138,8 @@ export class FoundryRefereeEngine implements RefereeEngine {
       return { ...base, outcome: 'did-not-move', finishedAt: now() };
     } catch (err) {
       return { ...base, outcome: 'error', finishedAt: now(), error: String(err).slice(0, 300) };
+    } finally {
+      if (runDir) await rm(runDir, { recursive: true, force: true }).catch(() => undefined);
     }
   }
 }

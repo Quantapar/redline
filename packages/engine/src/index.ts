@@ -7,4 +7,5 @@ export * from './analyzers/slither.js';
 export * from './analyzers/aderyn.js';
 export * from './foundry-referee.js';
 export * from './broadcast.js';
+export * from './project.js';
 export * from './factory.js';

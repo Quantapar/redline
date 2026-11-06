@@ -110,6 +110,8 @@ export interface CouncilDispatch {
   providers: string[];        // one per referee, must be distinct
   blocks: number[];           // fork block per referee (may vary)
   forkUrlFor?: (provider: string) => string | undefined;
+  /** prepared Foundry project (src + forge-std) the real referee compiles against */
+  projectDir?: string;
   thresholdWei: string;
   config?: CouncilConfig;
 }
@@ -141,6 +143,7 @@ export async function runCouncil(
         provider,
         forkUrl: dispatch.forkUrlFor?.(provider),
         forkBlock: dispatch.blocks[i] ?? dispatch.blocks[0] ?? 0,
+        projectDir: dispatch.projectDir,
         thresholdWei: dispatch.thresholdWei,
       }),
     ),
