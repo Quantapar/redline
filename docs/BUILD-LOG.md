@@ -664,4 +664,4 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   finished scan (with findings) got mislabeled 'cancelled'. Added cancelScanIfActive, an
   atomic compare-and-set (UPDATE ... WHERE status NOT IN terminal) so a scan that reached
   a terminal state during the race is never overwritten; cancelScan now reports the real
-  state instead. Also treats an already-'cancelled' scan as terminal. +2 tests. Suite 248 green.
+  state instead. Also treats an already-'cancelled' scan as terminal. +2 tests. Suite 246 green.
