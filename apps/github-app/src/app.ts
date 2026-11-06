@@ -262,7 +262,7 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
         const source = Buffer.from(data.content, (data.encoding as BufferEncoding) ?? 'base64')
           .toString('utf8')
           .slice(0, MAX_SOURCE_CHARS);
-        const contract = extractContractName(source, '');
+        const contract = extractContractName(source, '', file);
         targets.push({ file, contract, source, changedFunctions: [], connectedFunctions: [] });
       } catch {
         // file deleted or unreadable at this ref; skip it

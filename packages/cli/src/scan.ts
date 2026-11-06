@@ -38,7 +38,7 @@ export async function detectTargets(dir: string): Promise<LocalTarget[]> {
   for (const file of files) {
     const source = await readFile(file, 'utf8');
 
-    const contractName = extractContractName(source, '');
+    const contractName = extractContractName(source, '', file);
     if (!contractName) continue;
     targets.push({
       contractName,

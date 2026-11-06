@@ -28,3 +28,16 @@ contract Vault is IVault { function withdraw() external {} }`;
     expect(extractContractName('', 'the contract')).toBe('the contract');
   });
 });
+
+describe('extractContractName with a file-name hint', () => {
+  it('prefers the file\'s namesake over a helper declared first', () => {
+    const src = `contract Helper {}\ncontract Vault { function withdraw() external {} }`;
+    expect(extractContractName(src, 'Unknown', 'src/Vault.sol')).toBe('Vault');
+    // without the hint, the first contract wins (documented behavior)
+    expect(extractContractName(src)).toBe('Helper');
+  });
+  it('still returns the first contract when the namesake is absent', () => {
+    const src = `contract Alpha {}\ncontract Beta {}`;
+    expect(extractContractName(src, 'Unknown', 'Gamma.sol')).toBe('Alpha');
+  });
+});
