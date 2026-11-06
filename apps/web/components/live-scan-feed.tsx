@@ -136,7 +136,9 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
         </div>
         <div className="max-h-80 overflow-y-auto p-2 font-mono text-[12px]">
           {events.length === 0 ? (
-            <div className="px-2 py-6 text-center text-muted-foreground">Waiting for the first attack…</div>
+            <div className="px-2 py-6 text-center text-muted-foreground">
+              {done ? 'This scan finished before the live view connected — see the results below.' : 'Waiting for the first attack…'}
+            </div>
           ) : (
             events.map((ev, i) => {
               const line = eventLine(ev);

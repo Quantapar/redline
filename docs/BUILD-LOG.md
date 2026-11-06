@@ -397,3 +397,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Walked the states: hover is already (hover:hover)-gated by Tailwind v4; numbers are tabular;
   reduced-motion is handled; dark-only so no theme drift. The dashboard deliberately has NO entrance
   animation (seen every visit, not once).
+
+## 2026-11-06 — more craft (scan room)
+- Stage timeline + connectors transition smoothly between states as the scan advances.
+- Live log lines fade in as they stream (reduced-motion safe).
+- When a fast scan finishes before the browser's SSE connects (the poll fallback catches it), the log
+  now says "This scan finished before the live view connected — see the results below" instead of a
+  confusing "Waiting for the first attack…". Caught by live verification.
