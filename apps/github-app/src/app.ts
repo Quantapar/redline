@@ -1,27 +1,108 @@
 import type { Probot, Context } from 'probot';
-import { createDb, schema, createScan } from '@redline/db';
+import { createDb, schema, createScan, and, eq, desc } from '@redline/db';
 import { createScanQueue, enqueueScan, createRedis, scanQueueName } from '@redline/worker';
 import { setScanCheckRun, getScanCompletionContext } from '@redline/db';
 import { QueueEvents } from 'bullmq';
-import { decideIntake, buildCheckOutput, type IntakeEvent } from './scan-intake.js';
-import type { Finding } from '@redline/shared';
+import {
+  decideIntake, buildCheckOutput, buildVerdictComment, buildPendingComment, VERDICT_MARKER, type IntakeEvent,
+} from './scan-intake.js';
 
 type Database = ReturnType<typeof createDb>['db'];
 
 /** A GitHub client that can resolve a check run (the slice we use). The arg type is
  *  `any` so the real Octokit (with its own precise params) and a test fake both fit. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Call = (args: any) => Promise<any>;
 export interface CheckUpdater {
-  checks: { update: (args: any) => Promise<unknown> };
+  checks: { update: Call };
+  /** PR conversation comments (GitHub serves PR comments through the issues API). */
+  issues?: { listComments: Call; createComment: Call; updateComment: Call; deleteComment?: Call };
+}
+export type CommentClient = Required<Pick<CheckUpdater, 'issues'>>;
+
+interface GhComment {
+  id: number;
+  body?: string;
+  user?: { type?: string };
+  performed_via_github_app?: { id?: number } | null;
+}
+
+/** Read every comment on the PR (100 per page, bounded so a runaway PR can't loop us). */
+async function listAllComments(octokit: CommentClient, ref: { owner: string; repo: string; issue_number: number }) {
+  const all: GhComment[] = [];
+  for (let page = 1; page <= 30; page++) {
+    const { data } = await octokit.issues.listComments({ ...ref, per_page: 100, page });
+    all.push(...(data as GhComment[]));
+    if ((data as GhComment[]).length < 100) break;
+  }
+  return all;
 }
 
 /**
- * Resolve a scan's GitHub check run once the scan finishes or fails. On
- * 'completed' the conclusion comes from the findings (red -> failure); on
- * 'failed' it is neutral — a scan that errored proved nothing, so it must not
- * fail the merge, but must not hang either. Returns whether it resolved or
- * skipped (no scan, no check run, or no installation). Extracted and exported so
- * this wiring — not just buildCheckOutput — is unit-tested.
+ * Create or edit Redline's single sticky comment on a PR, found by its hidden
+ * marker AND authored by this exact GitHub App (performed_via_github_app.id), so
+ * neither a human nor another bot quoting the marker can make Redline overwrite
+ * their comment. Without an app id (tests, misconfig) it falls back to bot-only.
+ * If two events raced and both created one, the extras are removed so a stale
+ * "attacking…" comment can't linger.
+ */
+export async function upsertVerdictComment(
+  octokit: CommentClient,
+  ref: { owner: string; repo: string; issue_number: number },
+  body: string,
+  appId?: number,
+): Promise<'created' | 'updated'> {
+  const isMine = (c: GhComment) =>
+    !!c.body?.includes(VERDICT_MARKER) &&
+    (appId ? c.performed_via_github_app?.id === appId : c.user?.type === 'Bot');
+  const mine = (await listAllComments(octokit, ref)).filter(isMine).sort((x, y) => x.id - y.id);
+
+  if (mine.length > 0) {
+    await octokit.issues.updateComment({ owner: ref.owner, repo: ref.repo, comment_id: mine[0]!.id, body });
+    await removeDuplicates(octokit, ref, mine.slice(1));
+    return 'updated';
+  }
+  await octokit.issues.createComment({ ...ref, body });
+  // Close the list-then-create race: if a concurrent event also created one, keep
+  // the oldest, give it this body, and delete the rest.
+  const after = (await listAllComments(octokit, ref)).filter(isMine).sort((x, y) => x.id - y.id);
+  if (after.length > 1) {
+    await octokit.issues.updateComment({ owner: ref.owner, repo: ref.repo, comment_id: after[0]!.id, body });
+    await removeDuplicates(octokit, ref, after.slice(1));
+  }
+  return 'created';
+}
+
+async function removeDuplicates(octokit: CommentClient, ref: { owner: string; repo: string }, extras: GhComment[]) {
+  if (!octokit.issues.deleteComment) return;
+  for (const c of extras) {
+    await octokit.issues.deleteComment({ owner: ref.owner, repo: ref.repo, comment_id: c.id }).catch(() => {});
+  }
+}
+
+/** True when no newer scan exists for the same repository + PR (a stale verdict must not win). */
+async function isLatestScanForPr(db: Database, scan: { id: string; repositoryId: string; prNumber: number | null }) {
+  if (!scan.prNumber) return true;
+  const [latest] = await db
+    .select({ id: schema.scans.id })
+    .from(schema.scans)
+    .where(and(eq(schema.scans.repositoryId, scan.repositoryId), eq(schema.scans.prNumber, scan.prNumber)))
+    .orderBy(desc(schema.scans.createdAt))
+    .limit(1);
+  return !latest || latest.id === scan.id;
+}
+
+/**
+ * Resolve a scan on GitHub once it finishes or fails: complete its check run and
+ * write the verdict into the PR's sticky comment. On 'completed' the verdict comes
+ * from the findings and the scan row (red -> failure; anything short of a full
+ * referee verdict -> neutral); on 'failed' it is neutral — a scan that errored
+ * proved nothing, so it must not fail the merge, but must not hang either.
+ * The check run belongs to this scan's own commit, so it is always resolved. The
+ * sticky comment is shared by the whole PR, so only the newest scan may write it.
+ * The check and the comment are independent: a failure of one is reported through
+ * `logError` and does not stop the other. Returns 'skipped' when nothing was
+ * resolved. Exported so this wiring — not just the builders — is unit-tested.
  */
 export async function resolveScanCheck(opts: {
   db: Database;
@@ -29,27 +110,63 @@ export async function resolveScanCheck(opts: {
   authFor: (installationId: number) => Promise<CheckUpdater>;
   appUrl: string;
   outcome: 'completed' | 'failed';
+  /** this GitHub App's id, so only Redline's own comment is ever edited */
+  appId?: number;
   log?: (msg: string) => void;
+  logError?: (msg: string) => void;
 }): Promise<'resolved' | 'skipped'> {
   if (!opts.scanId) return 'skipped';
   const ctx = await getScanCompletionContext(opts.db, opts.scanId);
-  if (!ctx || !ctx.checkRunId || ctx.installationId == null) return 'skipped';
+  if (!ctx || ctx.installationId == null) return 'skipped';
+  const prNumber = ctx.scan.prNumber;
+  const writeComment = !!prNumber && (await isLatestScanForPr(opts.db, ctx.scan));
+  if (!ctx.checkRunId && !writeComment) {
+    if (prNumber) opts.log?.(`[redline] scan ${opts.scanId} is stale for PR #${prNumber}; leaving the newer verdict alone`);
+    return 'skipped';
+  }
   const [owner, repo] = ctx.repoFullName.split('/');
   const octokit = await opts.authFor(ctx.installationId);
-  const out = opts.outcome === 'completed'
-    ? buildCheckOutput(ctx.findings as unknown as Finding[], opts.appUrl)
-    : {
-        conclusion: 'neutral' as const,
-        title: 'Redline scan could not complete',
-        summary: 'The scan errored before reaching a verdict. This does not block the merge; re-run the scan to try again.',
-      };
-  await octokit.checks.update({
-    owner: owner!, repo: repo!, check_run_id: ctx.checkRunId,
-    status: 'completed', conclusion: out.conclusion, completed_at: new Date().toISOString(),
-    output: { title: out.title, summary: out.summary },
-  });
-  opts.log?.(`[redline] resolved check ${ctx.checkRunId} for scan ${opts.scanId}: ${out.conclusion}`);
-  return 'resolved';
+  const findings = ctx.findings as unknown as Parameters<typeof buildCheckOutput>[0];
+  const facts = { status: ctx.scan.status, candidateCount: ctx.scan.candidateCount };
+  const logError = opts.logError ?? opts.log;
+  let did = false;
+
+  if (ctx.checkRunId) {
+    const out = opts.outcome === 'completed'
+      ? buildCheckOutput(findings, opts.appUrl, facts)
+      : {
+          conclusion: 'neutral' as const,
+          title: 'Redline scan could not complete',
+          summary: 'The scan errored before reaching a verdict. This does not block the merge; re-run the scan to try again.',
+        };
+    try {
+      await octokit.checks.update({
+        owner: owner!, repo: repo!, check_run_id: ctx.checkRunId,
+        status: 'completed', conclusion: out.conclusion, completed_at: new Date().toISOString(),
+        output: { title: out.title, summary: out.summary },
+      });
+      did = true;
+      opts.log?.(`[redline] resolved check ${ctx.checkRunId} for scan ${opts.scanId}: ${out.conclusion}`);
+    } catch (err) {
+      logError?.(`[redline] could not resolve check ${ctx.checkRunId} for scan ${opts.scanId}: ${String(err)}`);
+    }
+  }
+
+  if (writeComment && octokit.issues) {
+    const body = buildVerdictComment(findings, {
+      appUrl: opts.appUrl, scanId: ctx.scan.id, commitSha: ctx.scan.commitSha, ...facts,
+    }, opts.outcome);
+    try {
+      const r = await upsertVerdictComment(octokit as CommentClient, { owner: owner!, repo: repo!, issue_number: prNumber! }, body, opts.appId);
+      did = true;
+      opts.log?.(`[redline] ${r} verdict comment on PR #${prNumber} for scan ${opts.scanId}`);
+    } catch (err) {
+      logError?.(`[redline] could not write verdict comment on PR #${prNumber}: ${String(err)}`);
+    }
+  } else if (prNumber && !writeComment) {
+    opts.log?.(`[redline] scan ${opts.scanId} is stale for PR #${prNumber}; resolved its check only`);
+  }
+  return did ? 'resolved' : 'skipped';
 }
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
@@ -78,11 +195,15 @@ export interface RedlineAppDeps {
   queue?: ReturnType<typeof createScanQueue>;
   /** skip the Redis QueueEvents completion listener (tests) */
   skipCompletion?: boolean;
+  /** this GitHub App's id (defaults to APP_ID / GITHUB_APP_ID) */
+  appId?: number;
 }
 
 export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
   const db = deps.db ?? createDb().db;
   const queue = deps.queue ?? createScanQueue();
+  // Read at startup, not import time: index.ts loads the root .env after imports run.
+  const appId = deps.appId ?? (Number(process.env.APP_ID ?? process.env.GITHUB_APP_ID) || undefined);
 
   // When a scan completes (in the separate worker process), resolve its check.
   if (!deps.skipCompletion) {
@@ -90,7 +211,7 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
   const scanIdFor = async (jobId: string) => (await queue.getJob(jobId))?.data.scanId as string | undefined;
   const authFor = (installationId: number) => app.auth(installationId);
   events.on('completed', async ({ jobId }: { jobId: string }) => {
-    try { await resolveScanCheck({ db, scanId: await scanIdFor(jobId), authFor, appUrl: APP_URL, outcome: 'completed', log: (m) => app.log.info(m) }); }
+    try { await resolveScanCheck({ db, scanId: await scanIdFor(jobId), authFor, appUrl: APP_URL, outcome: 'completed', appId, log: (m) => app.log.info(m), logError: (m) => app.log.error(m) }); }
     catch (err) { app.log.error(`[redline] failed to resolve check: ${String(err)}`); }
   });
   // A scan job that errors fires 'failed', not 'completed'. Without this, the check
@@ -98,7 +219,7 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
   // PR over an infrastructure hiccup. resolveScanCheck sets it to neutral: a scan that
   // errored proved nothing, so it must not fail the merge, but it must not hang either.
   events.on('failed', async ({ jobId }: { jobId: string }) => {
-    try { await resolveScanCheck({ db, scanId: await scanIdFor(jobId), authFor, appUrl: APP_URL, outcome: 'failed', log: (m) => app.log.info(m) }); }
+    try { await resolveScanCheck({ db, scanId: await scanIdFor(jobId), authFor, appUrl: APP_URL, outcome: 'failed', appId, log: (m) => app.log.info(m), logError: (m) => app.log.error(m) }); }
     catch (err) { app.log.error(`[redline] failed to resolve a failed scan's check: ${String(err)}`); }
   });
   }
@@ -185,6 +306,21 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
       },
     });
     await setScanCheckRun(db, scan.id, check.data.id);
+
+    // Post (or reset) the sticky verdict comment so the PR shows Redline is working.
+    // Best-effort: a comment failure must never stop the scan itself.
+    if (ev.prNumber) {
+      try {
+        await upsertVerdictComment(
+          octokit as unknown as CommentClient,
+          { ...repoRef, issue_number: ev.prNumber },
+          buildPendingComment({ appUrl: APP_URL, scanId: scan.id, commitSha: ev.headSha }),
+          appId,
+        );
+      } catch (err) {
+        app.log.error(`[redline] could not post the pending comment on PR #${ev.prNumber}: ${String(err)}`);
+      }
+    }
 
     await enqueueScan(queue, scan.id, decision.trigger === 'pull-request' ? 3 : 5);
     app.log.info(`[redline] queued scan ${scan.id} (check ${check.data.id})`);
