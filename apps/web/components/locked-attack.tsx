@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/icon';
 import { LockedIcon, Key01Icon } from '@hugeicons/core-free-icons';
+import type { Run } from '@/lib/highlight-code';
 
-export function LockedAttack({ preview, hiddenLines }: { preview: string; hiddenLines: number }) {
+export function LockedAttack({ preview, previewLines, hiddenLines }: { preview: string; previewLines?: Run[][]; hiddenLines: number }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
       <div className="relative">
         <div className="pointer-events-none select-none opacity-60 blur-[1.5px]">
-          <CodeBlock code={preview} language="ts" filename="Exploit.t.sol" />
+          <CodeBlock code={preview} highlighted={previewLines} language="ts" filename="Exploit.t.sol" />
         </div>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-full border border-border bg-background/90">

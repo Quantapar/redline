@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { motion, useReducedMotion, type Transition } from 'motion/react'
+import { LazyMotion, useReducedMotion, type Transition } from 'motion/react'
+import * as m from 'motion/react-m'
+
+const loadFeatures = () => import('@/lib/motion-features').then((mod) => mod.default)
 
 import { DASH, DISC_POSE, SEAM, TICK, sheetPose } from '@/lib/copy-check-glyph'
 
@@ -59,51 +62,53 @@ export function CopyCheck({
   const pose = (dir: 1 | -1) => (copied ? DISC_POSE : sheetPose(dir))
 
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-      data-slot="copy-check"
+    <LazyMotion features={loadFeatures} strict>
+      <svg
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden
+        data-slot="copy-check"
 
-      data-copied={copied || undefined}
-    >
+        data-copied={copied || undefined}
+      >
 
-      <mask id={seam} maskUnits="userSpaceOnUse">
-        <rect width="24" height="24" fill="#fff" />
-        <motion.rect
+        <mask id={seam} maskUnits="userSpaceOnUse">
+          <rect width="24" height="24" fill="#fff" />
+          <m.rect
+            initial={false}
+            animate={pose(1)}
+            transition={morph}
+            fill="#000"
+            stroke="#000"
+            strokeWidth={strokeWidth + SEAM}
+          />
+        </mask>
+
+        <m.rect
+          data-copy-sheet="back"
           initial={false}
-          animate={pose(1)}
-          transition={morph}
-          fill="#000"
-          stroke="#000"
-          strokeWidth={strokeWidth + SEAM}
+          animate={{ ...pose(-1), opacity: copied ? 0 : 1 }}
+          transition={{ ...morph, opacity: dissolve }}
+          mask={`url(#${seam})`}
         />
-      </mask>
+        <m.rect initial={false} animate={pose(1)} transition={morph} />
 
-      <motion.rect
-        data-copy-sheet="back"
-        initial={false}
-        animate={{ ...pose(-1), opacity: copied ? 0 : 1 }}
-        transition={{ ...morph, opacity: dissolve }}
-        mask={`url(#${seam})`}
-      />
-      <motion.rect initial={false} animate={pose(1)} transition={morph} />
-
-      <motion.path
-        d={TICK}
-        pathLength={1}
-        strokeDasharray={DASH}
-        initial={false}
-        animate={{ strokeDashoffset: copied ? 0 : 1 }}
-        transition={draw}
-      />
-    </svg>
+        <m.path
+          d={TICK}
+          pathLength={1}
+          strokeDasharray={DASH}
+          initial={false}
+          animate={{ strokeDashoffset: copied ? 0 : 1 }}
+          transition={draw}
+        />
+      </svg>
+    </LazyMotion>
   )
 }

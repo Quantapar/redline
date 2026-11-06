@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { CopyCheck, useReceipt } from '@/components/ui/copy-check'
 import {
@@ -12,11 +12,38 @@ import {
   TooltipViewport,
 } from '@/components/ui/tooltip'
 import { changeRuns, numberLines, type DiffLine } from '@/lib/diff-lines'
-import { highlightCode, type CodeLanguage } from '@/lib/highlight-code'
+// Type-only: the highlighter itself (lezer's JS/TS parser, ~150 KB) is loaded on
+// demand below, so pages that show code don't ship it in their first-load bundle.
+import type { CodeLanguage, Run } from '@/lib/highlight-code'
 import { cn } from '@/lib/utils'
 import { DownloadIcon, CodeIcon, Terminal } from "lucide-react"
 
 export type { DiffLine }
+
+const plain = (code: string): Run[][] => code.split('\n').map((text) => (text ? [{ text }] : []))
+
+/**
+ * Syntax-highlighted lines for `code`. Uses `preset` when the server already
+ * highlighted it (no client cost, no flash). Otherwise renders plain text first
+ * and swaps in colours once the highlighter chunk loads; 'sh' has no grammar so
+ * it never loads the chunk at all.
+ */
+function useHighlighted(code: string, language: CodeLanguage, preset?: Run[][]): Run[][] {
+  const [done, setDone] = useState<{ code: string; language: CodeLanguage; lines: Run[][] } | null>(null)
+  useEffect(() => {
+    if (preset || language === 'sh') return
+    let live = true
+    import('@/lib/highlight-code').then(({ highlightCode }) => {
+      if (live) setDone({ code, language, lines: highlightCode(code, language) })
+    })
+    return () => {
+      live = false
+    }
+  }, [code, language, preset])
+  if (preset) return preset
+  if (done && done.code === code && done.language === language) return done.lines
+  return plain(code)
+}
 
 export const INK: Record<string, string> = {
   comment: 'text-muted-foreground',
@@ -72,6 +99,7 @@ export function CodeBlock({
   actions,
   copyText,
   download = true,
+  highlighted,
 }: {
 
   code?: string
@@ -91,6 +119,9 @@ export function CodeBlock({
   copyText?: string
 
   download?: boolean | string
+
+  /** lines already highlighted on the server (see lib/highlight-code); skips client highlighting */
+  highlighted?: Run[][]
 }) {
   const code =
     given ??
@@ -100,7 +131,7 @@ export function CodeBlock({
       .join('\n')
   const diffing = diff !== undefined && showDiff
 
-  const lines = useMemo(() => highlightCode(code.replace(/\n$/, ''), language), [code, language])
+  const lines = useHighlighted(code.replace(/\n$/, ''), language, diffing ? undefined : highlighted)
   const [copied, showCopied] = useReceipt()
 
   const [tip] = useState(() => createTooltipHandle<string>())
@@ -266,9 +297,9 @@ function DiffBody({
   const rows = useMemo(() => numberLines(lines, oldStart, newStart), [lines, oldStart, newStart])
   const runs = useMemo(() => changeRuns(lines), [lines])
 
-  const painted = useMemo(
-    () => highlightCode(lines.map((line) => line.text).join('\n'), language),
-    [lines, language],
+  const painted = useHighlighted(
+    useMemo(() => lines.map((line) => line.text).join('\n'), [lines]),
+    language,
   )
 
   return (
