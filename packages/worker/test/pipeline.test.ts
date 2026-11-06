@@ -127,6 +127,30 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
     expect(finalScan.status).toBe('complete');
   });
 
+  it('stops at the post-VERIFY checkpoint when cancelled during verification', async () => {
+    // Not cancelled during hunt (so the post-hunt checkpoint passes); cancelled during
+    // the council verify phase, so the later checkpoint must catch it before 'complete'.
+    const repo = await seedRepo(handle.db);
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'cancelverify' });
+    const base = new SimulationRefereeEngine();
+    let cancelled = false;
+    const cancellingEngine = {
+      run: async (input: Parameters<typeof base.run>[0]) => {
+        if (!cancelled) { cancelled = true; await setScanStatus(handle.db, scan.id, 'cancelled'); }
+        return base.run(input);
+      },
+    };
+    const result = await runScan({
+      db: handle.db,
+      client: fakeClientFor('@redline-sim exploitable=false netWei=0 cheatDependent=false flaky=false'),
+      engine: cancellingEngine,
+      prepare: async () => ({ targets: [target], policy: DEFAULT_POLICY }),
+    }, scan.id);
+    const finalScan = (await handle.db.select().from(schema.scans).where(eq(schema.scans.id, scan.id)))[0]!;
+    expect(finalScan.status).toBe('cancelled'); // the post-verify checkpoint caught it, not overwritten to 'complete'
+    expect(result.redCount).toBe(0);
+  });
+
   it('stops and stays cancelled when cancelled mid-run', async () => {
     const repo = await seedRepo(handle.db);
     const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'cancelme' });

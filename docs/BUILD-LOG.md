@@ -852,3 +852,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   critical functions are rigorously tested: cheatcode scanner (property/fuzz), attackerGained
   (property ~9k), decideUnlock (exhaustive 16), tallyCouncil (256-combo + fuzz). +1 test.
   Suite 278 green.
+
+## 2026-11-06 — cover the second cancellation checkpoint
+
+- runScan has two cancellation checkpoints: post-hunt and post-verify. The existing test
+  cancels during hunt, so it returns at the first checkpoint and never exercises the
+  second. Added a test that cancels during the verify phase (via an engine that flips the
+  scan to cancelled on its first run) so the scan passes the post-hunt check and the
+  post-verify checkpoint catches it — the scan ends 'cancelled', not overwritten to
+  'complete'. Both cancellation branches are now covered. +1 test. Suite 279 green.
