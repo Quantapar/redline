@@ -1,7 +1,8 @@
 import { Card } from '@/components/ui/card';
 import { CodeBlock } from '@/components/ui/code-block';
 import { Icon } from '@/components/icon';
-import { Shield01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
+import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
+import { Head } from '@/components/overlay/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,19 +28,8 @@ const RULES = [
 
 export default function PolicyPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
-          <Icon icon={Shield01Icon} size={20} />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Security policy</h1>
-          <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-            Every team has its own rules. Write them in plain English in a small file in your repo.
-            Redline reads the file on every scan and flags anything that breaks them.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Head title="Security policy" meta="Every team has its own rules. Write them in plain English in a small file in your repo. Redline reads the file on every scan and flags anything that breaks them." />
 
       <Card className="p-0">
         <div className="border-b border-border px-5 py-3 text-[13px] font-semibold">Your policy file</div>

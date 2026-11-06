@@ -3,8 +3,9 @@ import { canDeploy, buildAttestation } from '@redline/gates';
 import { Card } from '@/components/ui/card';
 import { StatusBadge } from '@/components/status-badge';
 import { Icon } from '@/components/icon';
-import { LockedIcon, CheckmarkCircle02Icon, Cancel01Icon, GitBranchIcon, JusticeScale01Icon } from '@hugeicons/core-free-icons';
+import { CheckmarkCircle02Icon, Cancel01Icon, GitBranchIcon, JusticeScale01Icon } from '@hugeicons/core-free-icons';
 import { shortSha } from '@/lib/format';
+import { Head } from '@/components/overlay/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,20 +27,8 @@ export default async function GoingLivePage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
-          <Icon icon={LockedIcon} size={20} />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Going-live gates</h1>
-          <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-            Redline does not run your deploys. It guards the moment code goes live: the approved-version
-            record can only be set by the referee council, and a version with an unresolved reproduced
-            finding cannot pass.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Head title="Going-live gates" meta="Redline does not run your deploys. It guards the moment code goes live: the approved-version record can only be set by the referee council, and a version with an unresolved reproduced finding cannot pass." />
 
       <Card className="p-4">
         <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
