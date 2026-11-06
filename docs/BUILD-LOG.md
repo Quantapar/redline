@@ -371,3 +371,10 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   reopen state) — the interactive UI logic is now covered.
 - Same-origin CSRF guard on the mutation endpoints (verified: cross-origin -> 403, UI unaffected).
 - Totals: 178 tests across 10 packages, all green.
+
+## 2026-11-06 — MCP server fix (live stdio smoke caught it)
+- A live stdio smoke of the MCP server revealed it could not start: @modelcontextprotocol/sdk@1.32.2
+  imports zod/v3, which only exists in zod >=3.25, but we pinned 3.24.1. Bumped zod to 3.25.76
+  (backward-compatible). The server now starts and lists redline_list_findings + redline_fix_context.
+- Lesson: the tool-handler unit tests passed, but the server process was broken — live smoke matters.
+- Also added db-queries, fixer, and more component tests. Totals: 203 tests across 10 packages.
