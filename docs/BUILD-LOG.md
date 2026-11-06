@@ -830,3 +830,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   both handlers thin wrappers (DRY). Tested with a fake octokit: completed+red -> failure,
   completed+clean -> success, failed -> neutral, and skipped (no check run / no scan id)
   makes no octokit call. +4 tests. Suite 272 green.
+
+## 2026-11-06 — property-test attackerGained (the fact the council votes on)
+
+- Added property tests over ~9,000 random cases for attackerGained/wei, matching the
+  rigor applied to the cheatcode scanner: moved IFF the summed native net meets or exceeds
+  a positive threshold (negatives/losses included), additivity (splitting a delta yields
+  the same verdict), the exact threshold boundary (t-1 never counts, t always does), the
+  positive-threshold invariant (throws on <= 0 so dust never counts), and wei round-trips
+  any integer while rejecting malformed input. All pass — the core consensus fact holds its
+  invariants, now protected against regression by properties, not just examples. +5 tests.
+  Suite 277 green.
