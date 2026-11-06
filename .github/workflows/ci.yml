@@ -31,9 +31,9 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
+      # Version comes from package.json "packageManager" (pnpm@9.0.0); specifying
+      # it here too makes action-setup@v4 error on "Multiple versions of pnpm".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
