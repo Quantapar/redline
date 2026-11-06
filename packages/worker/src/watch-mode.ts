@@ -16,8 +16,13 @@ export interface WatchRecipe {
  */
 export async function triggerWatchMode(
   db: Database,
-  opts: { recipe: WatchRecipe; enqueue: (scanId: string) => Promise<void> },
-): Promise<{ recipeId: string; scansQueued: number }> {
+  opts: {
+    recipe: WatchRecipe;
+    enqueue: (scanId: string) => Promise<void>;
+    /** called when one repo fails to queue; the rollout continues regardless */
+    onError?: (repositoryId: string, err: unknown) => void;
+  },
+): Promise<{ recipeId: string; scansQueued: number; failed: number }> {
   const recipe = await insertRecipe(db, {
     weaknessClass: opts.recipe.weaknessClass,
     chain: opts.recipe.chain,
@@ -30,23 +35,31 @@ export async function triggerWatchMode(
 
   const repos = await db.select().from(schema.repositories).where(eq(schema.repositories.enabled, true));
   let queued = 0;
+  let failed = 0;
   for (const repo of repos) {
-    const [latest] = await db
-      .select()
-      .from(schema.scans)
-      .where(eq(schema.scans.repositoryId, repo.id))
-      .orderBy(desc(schema.scans.createdAt))
-      .limit(1);
-    const commitSha = latest?.commitSha ?? 'HEAD';
-    const scan = await createScan(db, {
-      repositoryId: repo.id,
-      trigger: 'watch-mode',
-      commitSha,
-      isIncremental: false,
-      changedTargets: latest?.changedTargets ?? [],
-    });
-    await opts.enqueue(scan.id);
-    queued += 1;
+    // Re-testing is a fan-out: one repo that fails to queue (DB hiccup, bad data)
+    // must not abort the rollout to every other customer. Isolate each repo.
+    try {
+      const [latest] = await db
+        .select()
+        .from(schema.scans)
+        .where(eq(schema.scans.repositoryId, repo.id))
+        .orderBy(desc(schema.scans.createdAt))
+        .limit(1);
+      const commitSha = latest?.commitSha ?? 'HEAD';
+      const scan = await createScan(db, {
+        repositoryId: repo.id,
+        trigger: 'watch-mode',
+        commitSha,
+        isIncremental: false,
+        changedTargets: latest?.changedTargets ?? [],
+      });
+      await opts.enqueue(scan.id);
+      queued += 1;
+    } catch (err) {
+      failed += 1;
+      opts.onError?.(repo.id, err);
+    }
   }
-  return { recipeId: recipe.id, scansQueued: queued };
+  return { recipeId: recipe.id, scansQueued: queued, failed };
 }

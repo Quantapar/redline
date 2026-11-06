@@ -32,4 +32,23 @@ describe('watch mode', () => {
     });
     expect(res.scansQueued).toBe(0);
   });
+
+  it('keeps rolling out to other repos when one fails to queue', async () => {
+    await seedRepo(handle.db);
+    await seedRepo(handle.db);
+    await seedRepo(handle.db);
+    let n = 0;
+    const errored: string[] = [];
+    const res = await triggerWatchMode(handle.db, {
+      recipe: { weaknessClass: 'reentrancy', chain: 'ethereum', severity: 'critical', title: 't', template: 't' },
+      // the second repo's enqueue throws; the rollout must continue to the third
+      enqueue: async () => { n += 1; if (n === 2) throw new Error('queue down'); },
+      onError: (repoId) => errored.push(repoId),
+    });
+    expect(res.scansQueued).toBe(2); // first and third succeeded
+    expect(res.failed).toBe(1);      // second failed but did not abort
+    expect(errored).toHaveLength(1);
+    // the recipe was still added despite the one failure
+    expect(await handle.db.select().from(schema.recipes)).toHaveLength(1);
+  });
 });

@@ -665,3 +665,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   atomic compare-and-set (UPDATE ... WHERE status NOT IN terminal) so a scan that reached
   a terminal state during the race is never overwritten; cancelScan now reports the real
   state instead. Also treats an already-'cancelled' scan as terminal. +2 tests. Suite 246 green.
+
+## 2026-11-06 — watch mode: resilient fan-out
+
+- triggerWatchMode re-tests every enabled repo against a new recipe, but the per-repo
+  loop had no isolation: if one repo's createScan/enqueue threw, the whole rollout
+  aborted (and threw to the caller) while some repos were already queued — violating the
+  system's "one failure never sinks the batch" philosophy. Wrapped each repo in try/catch
+  so the rollout continues; returns scansQueued + failed, with an optional onError hook.
+  +1 test (one repo fails, the others still queue, recipe still added). Suite 247 green.
