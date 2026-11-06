@@ -32,6 +32,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
       authorization: { params: { scope: 'read:user user:email repo' } },
+      // GitHub is a confidential client (we hold the secret), so state alone is
+      // sufficient CSRF protection. Dropping PKCE avoids the fragile pkce cookie
+      // that the tunnel intermittently failed to round-trip, which surfaced as
+      // the recurring `error=Configuration` ("pkceCodeVerifier could not be
+      // parsed") on the callback.
+      checks: ['state'],
     }),
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? [
