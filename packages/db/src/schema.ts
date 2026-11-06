@@ -136,6 +136,7 @@ export const regressionTests = pgTable('regression_tests', {
   repositoryId: uuid('repository_id').notNull().references(() => repositories.id, { onDelete: 'cascade' }),
   findingId: uuid('finding_id').references(() => findings.id, { onDelete: 'set null' }),
   weaknessClass: text('weakness_class').notNull(),
+  targetContract: text('target_contract'),
   forgeTest: text('forge_test').notNull(),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -131,7 +131,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   for (const rt of regTests) {
     const forgeTest = decrypt(rt.forgeTest);
     const wc = WeaknessClass.safeParse(rt.weaknessClass);
-    const contract = forgeTest.match(/contract\s+(\w+)/)?.[1] ?? 'contract';
+    const contract = rt.targetContract ?? forgeTest.match(/contract\s+(\w+)/)?.[1] ?? 'the contract';
     const regCand: Candidate = {
       id: `reg_${rt.id}`, scanId, hunterModel: 'forever-test', modelReceipt: null,
       weaknessClass: wc.success ? wc.data : 'other', targetContract: contract, targetFunction: null,
@@ -208,6 +208,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
         repositoryId: scan.repositoryId,
         findingId: findingRow.id,
         weaknessClass: c.weaknessClass,
+        targetContract: c.targetContract,
         forgeTest: encrypt(c.forgeTest), // the saved attack is encrypted at rest
         active: true,
       });
