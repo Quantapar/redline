@@ -24,3 +24,6 @@ test-results/
 !.env.local.example
 !**/.env.local.example
 .venv/
+
+# Foundry deps for the vault fixture (restored by: forge install)
+fixtures/vault/lib/

@@ -24,7 +24,9 @@ export async function markScanFailed(
  * real deployment each job runs inside its own sealed sandbox.
  */
 export function startWorker(overrides: Partial<PipelineDeps> = {}): Worker<ScanJobData> {
-  const { db } = createDb();
+  // Only open a connection from DATABASE_URL when the caller did not supply one
+  // (e.g. tests and embedders pass their own db); avoids requiring DATABASE_URL then.
+  const db = overrides.db ?? createDb().db;
 
   const worker = new Worker<ScanJobData>(
     SCAN_QUEUE,
@@ -32,7 +34,7 @@ export function startWorker(overrides: Partial<PipelineDeps> = {}): Worker<ScanJ
       const engine = overrides.engine ?? (await createRefereeEngine());
       const client = overrides.client ?? new OGRouterClient();
       const deps: PipelineDeps = {
-        db: overrides.db ?? db,
+        db,
         client,
         engine,
         prepare: overrides.prepare ?? gitPrepare,
@@ -53,7 +55,7 @@ export function startWorker(overrides: Partial<PipelineDeps> = {}): Worker<ScanJ
     const scanId = job?.data.scanId;
     if (scanId) {
       try {
-        await markScanFailed(overrides.db ?? db, scanId);
+        await markScanFailed(db, scanId);
       } catch (e) {
         console.error(`[worker] could not mark scan ${scanId} failed:`, (e as Error).message);
       }

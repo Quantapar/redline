@@ -908,3 +908,19 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   now render 200 (red: reproduced proof + redacted attack; non-red: Logic error / Not
   reproduced / Not saved) and all 7 routes are 200. Demo data intact (3 repos, 2 red, 1 non-red).
   The core finding-view flow — the heart of the demo — would otherwise have been broken on wake.
+
+## 2026-11-06 — Foundry installed; real fork path validated end-to-end
+
+- Foundry v1.9.0 (forge/cast/anvil/chisel) installed by the user. Verified the referee's real
+  path: fixtures/vault/ (vulnerable EtherVault + reentrancy PoC) compiles under solc 0.8.38 and
+  `forge test` reproduces the drain — REDLINE_NET = 11 ETH (10 honest + 1 attacker stake), PASS.
+  createRefereeEngine() now auto-selects FoundryRefereeEngine (factory test confirms); simulation
+  stays the fallback when Foundry is absent.
+- Worker robustness: startWorker() opened a DATABASE_URL connection eagerly even when the caller
+  passed overrides.db, which was then immediately shadowed — forcing DATABASE_URL to be set for
+  embedders/tests that supply their own db. Made the fallback lazy (overrides.db ?? createDb().db).
+  The queue-e2e test, previously skipped without DATABASE_URL, now runs. No change to the standalone
+  production worker (still reads DATABASE_URL when run with no overrides).
+- forge install restores fixtures/vault/lib/forge-std; added it to .gitignore (not committed).
+- Full suite green with Foundry present and DATABASE_URL unset: 279 tests across 10 packages;
+  web production build passes. Suite 279 green (now 0 skipped; queue-e2e counts as a run test).

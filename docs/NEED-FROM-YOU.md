@@ -130,3 +130,22 @@ write path, or a crafted filename could escape the project dir. Noted in code at
   (resolve a finding, run a scan). For a single-tenant demo that's acceptable; for multi-tenant
   production the real fix is a session-auth layer (GitHub OAuth) in front of the dashboard. It's a
   deliberate next-days item (changes the UX — adds login), not a quick patch. Decide when to add it.
+
+## Update (Foundry — INSTALLED ✓, 2026-11-06)
+You ran the installer: Foundry v1.9.0 (forge/cast/anvil/chisel) is live on this machine.
+- Verified the engine's real path end-to-end: `fixtures/vault/` (vulnerable vault + real
+  reentrancy PoC) compiles and reproduces the theft under `forge test` —
+  `REDLINE_NET: 11 ETH` drained (10 honest + 1 attacker stake), test PASSES. That pass is
+  exactly the fact the referee council votes on.
+- `createRefereeEngine()` now auto-selects `FoundryRefereeEngine` (confirmed by factory test);
+  simulation remains the fallback when Foundry is absent.
+- Full suite still green (279) with Foundry present; the worker's queue-e2e test, previously
+  skipped, now runs. (`forge install` restores `fixtures/vault/lib/forge-std`; it's gitignored.)
+
+Remaining Foundry-related work (my side, not blocking you):
+- Execution-level referee hardening: run each attack as **broadcast transactions from a funded
+  EOA** against the anvil fork (not `forge test`), so the cheatcode precompile is inert — turns
+  the static cheat scanner from defense-in-depth into a real guarantee. This is the substantial
+  engine change; I'll run an independent review on it before pushing.
+- Path-traversal normalisation when writing PR-authored contract sources into the sandbox
+  (noted at prepare.ts) — pairs with the above.
