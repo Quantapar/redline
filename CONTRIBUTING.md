@@ -7,10 +7,14 @@ See `docs/SETUP.md`. In short: `pnpm install`, create the `redline` and `redline
 ## Checks (what CI runs)
 ```bash
 pnpm install --frozen-lockfile
-pnpm --filter @redline/db push      # DATABASE_URL points at a test database
+pnpm --filter @redline/db push                 # DATABASE_URL points at a test database
 pnpm -r typecheck
-pnpm -r test                        # TEST_DATABASE_URL + REDIS_URL set
+pnpm -r --workspace-concurrency=1 test         # TEST_DATABASE_URL + REDIS_URL set
+pnpm --filter @redline/web build               # catch production-build regressions
 ```
+Run the tests with `--workspace-concurrency=1` (serial across packages): the DB-backed
+suites share one test database, so running packages in parallel can make them contend.
+`pnpm verify` runs the typecheck + test pair for you.
 All packages are source-first TypeScript (no build step needed to run); the apps run through
 Next.js and tsx.
 

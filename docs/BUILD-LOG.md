@@ -861,3 +861,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   scan to cancelled on its first run) so the scan passes the post-hunt check and the
   post-verify checkpoint catches it — the scan ends 'cancelled', not overwritten to
   'complete'. Both cancellation branches are now covered. +1 test. Suite 279 green.
+
+## 2026-11-06 — CONTRIBUTING.md matches what CI actually runs
+
+- CONTRIBUTING's "Checks (what CI runs)" listed `pnpm -r test` without
+  --workspace-concurrency=1. The DB-backed suites share one test database, so running
+  packages in parallel can make them contend — a contributor following the doc literally
+  could hit flaky failures. It also predated the production-build step added to CI this
+  session. Corrected to the serial test command plus the web build, and referenced the
+  `pnpm verify` shortcut. SETUP.md checked — it has no parallel-test command, so no change.
