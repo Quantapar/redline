@@ -252,8 +252,8 @@ export function SourceRadar({ business }: { business: string | null }) {
           {business ? `Ready to attack ${business}` : "Every path an attacker would take"}
         </h3>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-2 text-pretty">
-          Every protocol your contracts lean on, from flash loans to price feeds,
-          replayed on a mainnet fork the way an attacker would.
+          Flash loans, pools and price feeds your contracts touch, replayed the way an
+          attacker would.
         </p>
       </div>
     </div>

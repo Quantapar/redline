@@ -166,8 +166,8 @@ export function FindBusiness({ onPick }: { onPick: (account: GithubAccount) => v
       after={<SourceRadar business={selected ? label(selected) : null} />}
     >
       <StepHeading title="Let’s secure your contracts">
-        We’ll attack every contract in your repo on a mainnet fork, and show you what provably
-        moves. Free, about 3 minutes.
+        We’ll attack every contract on a mainnet fork and show you what provably moves.
+        Free, about 3 minutes.
       </StepHeading>
 
       <form
