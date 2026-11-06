@@ -30,11 +30,11 @@ jobs:
       TEST_DATABASE_URL: postgresql://redline@localhost:5432/redline_test
       REDIS_URL: redis://localhost:6379
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Version comes from package.json "packageManager" (pnpm@9.0.0); specifying
       # it here too makes action-setup@v4 error on "Multiple versions of pnpm".
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
