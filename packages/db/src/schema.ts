@@ -27,6 +27,9 @@ export const installations = pgTable('installations', {
   id: uuid('id').defaultRandom().primaryKey(),
   accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
   githubInstallationId: bigint('github_installation_id', { mode: 'number' }).notNull().unique(),
+  // The GitHub user who installed the App. For an organization install the
+  // account is the org, so this is how the installer sees its repos.
+  installedByGithubId: bigint('installed_by_github_id', { mode: 'number' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

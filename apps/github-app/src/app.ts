@@ -177,6 +177,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 // to exhaust GitHub API calls or bloat the scan row. Generous for real repos.
 const MAX_CHANGED_FILES = 50;
 const MAX_SOURCE_CHARS = 256_000;
+// Repos given a first scan per install event. An org can install on hundreds at
+// once; the rest are still registered and get scanned on their next push.
+const MAX_FIRST_SCANS = 10;
 
 interface RepoMeta {
   ownerLogin: string;
@@ -225,7 +228,7 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
   });
   }
 
-  async function upsertRepo(meta: RepoMeta, installationId: number): Promise<string> {
+  async function upsertRepo(meta: RepoMeta, installationId: number, installedBy?: number): Promise<string> {
     const [account] = await db
       .insert(schema.accounts)
       .values({ githubLogin: meta.ownerLogin, githubId: meta.ownerId })
@@ -233,8 +236,11 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
       .returning();
     const [inst] = await db
       .insert(schema.installations)
-      .values({ accountId: account!.id, githubInstallationId: installationId })
-      .onConflictDoUpdate({ target: schema.installations.githubInstallationId, set: { accountId: account!.id } })
+      .values({ accountId: account!.id, githubInstallationId: installationId, installedByGithubId: installedBy ?? null })
+      .onConflictDoUpdate({
+        target: schema.installations.githubInstallationId,
+        set: { accountId: account!.id, ...(installedBy != null ? { installedByGithubId: installedBy } : {}) },
+      })
       .returning();
     const [row] = await db
       .insert(schema.repositories)
@@ -373,7 +379,63 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
     );
   });
 
+  /**
+   * A newly connected repository: register it (so it shows on the installer's
+   * dashboard straight away) and, when it has contracts, attack its default
+   * branch now instead of waiting for the next push. The scan posts the same
+   * check on the head commit that pushes and pull requests get.
+   */
+  async function onboardRepo(octokit: Context['octokit'], fullName: string, installationId: number, installedBy: number | undefined, scan: boolean) {
+    const [owner, name] = fullName.split('/');
+    if (!owner || !name) return;
+    const repoRef = { owner, repo: name };
+    const { data: r } = await octokit.repos.get(repoRef);
+    const meta: RepoMeta = { ownerLogin: r.owner.login, ownerId: r.owner.id, repoId: r.id, fullName: r.full_name, defaultBranch: r.default_branch };
+    await upsertRepo(meta, installationId, installedBy);
+    if (!scan) return;
+
+    // An empty repository has no branch yet: registered, nothing to attack.
+    const branch = await octokit.repos.getBranch({ ...repoRef, branch: r.default_branch }).catch(() => null);
+    if (!branch) return;
+    const headSha = branch.data.commit.sha;
+    const { data: tree } = await octokit.git.getTree({ ...repoRef, tree_sha: headSha, recursive: 'true' });
+    const ev: IntakeEvent = {
+      action: 'push',
+      defaultBranch: r.default_branch,
+      ref: `refs/heads/${r.default_branch}`,
+      headSha,
+      baseSha: null, // first scan: the whole codebase
+      prNumber: null,
+      changedFiles: tree.tree.filter((t) => t.type === 'blob' && t.path).map((t) => t.path!),
+    };
+    if (decideIntake(ev).solidityFiles.length === 0) {
+      app.log.info(`[redline] ${r.full_name}: no contracts on ${r.default_branch}, registered without a scan`);
+      return;
+    }
+    await run(octokit, repoRef, meta, installationId, ev);
+  }
+
+  async function onboardRepos(
+    ctx: { octokit: Context['octokit'] },
+    repos: { full_name: string }[] | undefined,
+    installationId: number | undefined,
+    installedBy: number | undefined,
+  ) {
+    if (!installationId || !repos?.length) return;
+    app.log.info(`[redline] connected ${repos.length} repo(s) on installation ${installationId}`);
+    for (const [i, repo] of repos.entries()) {
+      // One repo failing (permissions, a deleted repo) must not stop the others.
+      try { await onboardRepo(ctx.octokit, repo.full_name, installationId, installedBy, i < MAX_FIRST_SCANS); }
+      catch (err) { app.log.error(`[redline] could not connect ${repo.full_name}: ${String(err)}`); }
+    }
+  }
+
   app.on('installation.created', async (ctx) => {
-    app.log.info(`[redline] installed on ${ctx.payload.repositories?.length ?? 0} repo(s)`);
+    await onboardRepos(ctx, ctx.payload.repositories, ctx.payload.installation.id, ctx.payload.sender.id);
+  });
+
+  // Repos added to an existing installation later ("Configure" on GitHub).
+  app.on('installation_repositories.added', async (ctx) => {
+    await onboardRepos(ctx, ctx.payload.repositories_added, ctx.payload.installation.id, ctx.payload.sender.id);
   });
 }

@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { and, eq, schema } from '@redline/db';
+import { and, eq, or, schema } from '@redline/db';
 import { auth } from '@/auth';
 import { db } from './db';
 
@@ -31,7 +31,8 @@ export const viewerGithubId = cache(async (): Promise<number | null> => {
 /**
  * The repository ids the viewer owns, following
  * repositories → installations → accounts and matching the account's GitHub id
- * to the viewer. Returns an empty array for signed-out or unconnected viewers,
+ * to the viewer, or the installation's installer (an org install's account is
+ * the org, not the person). Returns an empty array for signed-out or unconnected viewers,
  * so callers that filter on it naturally return nothing.
  */
 export const viewerRepoIds = cache(async (): Promise<string[]> => {
@@ -43,7 +44,8 @@ export const viewerRepoIds = cache(async (): Promise<string[]> => {
     .from(schema.repositories)
     .innerJoin(schema.installations, eq(schema.repositories.installationId, schema.installations.id))
     .innerJoin(schema.accounts, eq(schema.installations.accountId, schema.accounts.id))
-    .where(eq(schema.accounts.githubId, gid));
+    // Their own account's repos, plus any org's they installed the App on.
+    .where(or(eq(schema.accounts.githubId, gid), eq(schema.installations.installedByGithubId, gid)));
 
   return rows.map((r) => r.id);
 });

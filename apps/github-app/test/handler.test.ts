@@ -317,3 +317,104 @@ describe('resolveScanCheck — resolves the GitHub check when a scan ends', () =
     expect(update).not.toHaveBeenCalled();
   });
 });
+
+describe('GitHub App installation handler', () => {
+  // A fake installation-scoped octokit over a set of repos: each has an owner,
+  // a default branch head, and a file tree.
+  function installContext(opts: {
+    repos: { full_name: string; id: number; files: string[]; empty?: boolean }[];
+    event: 'created' | 'added';
+    sender?: number;
+  }) {
+    const byName = new Map(opts.repos.map((r) => [r.full_name, r]));
+    const checks = vi.fn().mockResolvedValue({ data: { id: 4242 } });
+    const octokit = {
+      repos: {
+        get: async ({ owner, repo }: { owner: string; repo: string }) => {
+          const r = byName.get(`${owner}/${repo}`)!;
+          return { data: { id: r.id, full_name: r.full_name, default_branch: 'main', owner: { login: owner, id: 7000 } } };
+        },
+        getBranch: async ({ owner, repo }: { owner: string; repo: string }) => {
+          if (byName.get(`${owner}/${repo}`)!.empty) throw new Error('404 Branch not found');
+          return { data: { commit: { sha: `head-${repo}` } } };
+        },
+        getContent: async ({ path }: { path: string }) => ({
+          data: { content: b64(`contract ${path.replace(/\W/g, '')} { function withdraw() external {} }`), encoding: 'base64' },
+        }),
+      },
+      git: {
+        getTree: async ({ repo }: { repo: string }) => ({
+          data: { tree: [...byName.values()].find((r) => r.full_name.endsWith(`/${repo}`))!.files.map((path) => ({ path, type: 'blob' })) },
+        }),
+      },
+      checks: { create: checks },
+    };
+    const list = opts.repos.map(({ full_name, id }) => ({ full_name, id }));
+    const payload = {
+      installation: { id: 77 },
+      sender: { id: opts.sender ?? 31337 },
+      ...(opts.event === 'created' ? { repositories: list } : { repositories_added: list }),
+    };
+    return { ctx: { octokit, payload }, checks };
+  }
+
+  beforeEach(async () => {
+    for (const t of [schema.scans, schema.repositories, schema.installations, schema.accounts]) await handle.db.delete(t);
+  });
+
+  it('registers every repo, and first-scans the default branch of the ones with contracts', async () => {
+    const { app, handlers } = fakeApp();
+    redlineApp(app as never, { db: handle.db, queue: fakeQueue, skipCompletion: true });
+    const { ctx, checks } = installContext({
+      event: 'created',
+      repos: [
+        { full_name: 'acme-org/vault', id: 501, files: ['src/Vault.sol', 'test/Vault.t.sol', 'README.md'] },
+        { full_name: 'acme-org/website', id: 502, files: ['index.html'] },
+        { full_name: 'acme-org/empty', id: 503, files: [], empty: true },
+      ],
+    });
+    await handlers.get('installation.created')!(ctx);
+
+    const repos = await handle.db.select().from(schema.repositories);
+    expect(repos.map((r) => r.fullName).sort()).toEqual(['acme-org/empty', 'acme-org/vault', 'acme-org/website']);
+
+    const scans = await handle.db.select().from(schema.scans);
+    expect(scans).toHaveLength(1);
+    expect(scans[0]!.trigger).toBe('first-scan');
+    expect(scans[0]!.commitSha).toBe('head-vault');
+    expect(scans[0]!.isIncremental).toBe(false);
+    // Only the real contract, not the test file
+    expect((scans[0]!.changedTargets as { file: string }[]).map((t) => t.file)).toEqual(['src/Vault.sol']);
+    expect(checks).toHaveBeenCalledOnce();
+    expect(checks.mock.calls[0]![0]).toMatchObject({ owner: 'acme-org', repo: 'vault', head_sha: 'head-vault' });
+    expect(jobs).toHaveLength(1);
+
+    // The installer is recorded, so they can see the org's repos
+    const [inst] = await handle.db.select().from(schema.installations);
+    expect(inst!.installedByGithubId).toBe(31337);
+  });
+
+  it('connects repos added to an existing installation later', async () => {
+    const { app, handlers } = fakeApp();
+    redlineApp(app as never, { db: handle.db, queue: fakeQueue, skipCompletion: true });
+    const { ctx } = installContext({ event: 'added', repos: [{ full_name: 'acme-org/staking', id: 601, files: ['contracts/Staking.sol'] }] });
+    await handlers.get('installation_repositories.added')!(ctx);
+    expect(await handle.db.select().from(schema.repositories)).toHaveLength(1);
+    expect(jobs).toHaveLength(1);
+  });
+
+  it('keeps going when one repo fails', async () => {
+    const { app, handlers } = fakeApp();
+    redlineApp(app as never, { db: handle.db, queue: fakeQueue, skipCompletion: true });
+    const { ctx } = installContext({ event: 'created', repos: [{ full_name: 'acme-org/vault', id: 701, files: ['src/Vault.sol'] }] });
+    const real = ctx.octokit.repos.get;
+    let first = true;
+    ctx.octokit.repos.get = async (args) => {
+      if (first) { first = false; throw new Error('403'); }
+      return real(args);
+    };
+    ctx.payload.repositories = [{ full_name: 'acme-org/gone', id: 700 }, { full_name: 'acme-org/vault', id: 701 }];
+    await handlers.get('installation.created')!(ctx);
+    expect((await handle.db.select().from(schema.repositories)).map((r) => r.fullName)).toEqual(['acme-org/vault']);
+  });
+});
