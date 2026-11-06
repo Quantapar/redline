@@ -801,3 +801,11 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   finding, a non-reproducing one yields none and never overruns the budget cap. This was
   the last exported function without a dedicated unit test — the export-vs-test sweep is
   now complete. +2 tests. Suite 265 green.
+
+## 2026-11-06 — verified the whole suite is CI-safe on a clean database
+
+- Dropped and recreated redline_test, pushed a fresh schema, and ran the full suite —
+  exactly the sequence CI runs. All 265 tests pass on a clean DB, confirming this
+  session's ~57 new tests (including many DB-backed ones) make no hidden assumptions about
+  pre-existing data and clean up after themselves, so they will pass in CI, not just on a
+  locally-accumulated database. The demo DB (redline) was untouched and remains healthy.
