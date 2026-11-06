@@ -36,4 +36,12 @@ describe('fixer', () => {
     const fix = parseFix(resp(JSON.stringify({ explanation: 'e', fixedSource: 's' })));
     expect(fix?.diff).toBe('');
   });
+
+  it('bounds oversized model output (explanation, diff, fixedSource)', () => {
+    const huge = 'A'.repeat(200_000);
+    const fix = parseFix(resp(JSON.stringify({ explanation: huge, fixedSource: huge, diff: huge })));
+    expect(fix!.explanation.length).toBeLessThanOrEqual(2_000);
+    expect(fix!.diff.length).toBeLessThanOrEqual(50_000);
+    expect(fix!.fixedSource.length).toBeLessThanOrEqual(100_000);
+  });
 });

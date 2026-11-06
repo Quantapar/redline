@@ -40,12 +40,20 @@ Return the corrected contract, a unified diff, and a plain explanation. JSON onl
   ];
 }
 
+// Bounds on untrusted model output. The diff and explanation are persisted and
+// the fixed source will be applied once PR-opening is wired, so an oversized
+// payload from a compromised or errant model must be cut off. Generous for a
+// real single-contract fix.
+const MAX_EXPLANATION_CHARS = 2_000;
+const MAX_DIFF_CHARS = 50_000;
+const MAX_SOURCE_CHARS = 100_000;
+
 export function parseFix(resp: ChatResponse): FixResult | null {
   const j = extractJson(resp.content) as Partial<FixResult> | null;
   if (!j || !j.fixedSource || !j.explanation) return null;
   return {
-    explanation: String(j.explanation),
-    fixedSource: String(j.fixedSource),
-    diff: String(j.diff ?? ''),
+    explanation: String(j.explanation).slice(0, MAX_EXPLANATION_CHARS),
+    fixedSource: String(j.fixedSource).slice(0, MAX_SOURCE_CHARS),
+    diff: String(j.diff ?? '').slice(0, MAX_DIFF_CHARS),
   };
 }

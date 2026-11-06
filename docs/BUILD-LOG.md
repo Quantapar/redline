@@ -628,3 +628,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   that every enqueue checks, so nothing is written after close and the subscriber is
   quit exactly once. Route-level (Redis + ReadableStream), covered by typecheck + review;
   the scan-events lib it uses is unit-tested.
+
+## 2026-11-06 — bound untrusted fixer output; deploy-check verified
+
+- Verified the deploy-check gate logic (source of truth behind verify-deploy): only
+  completed scans count (in-progress -> "never checked" -> blocked), unresolved red
+  findings are recomputed live, the latest complete scan for a version wins, queries
+  are parameterized. Sound and fails closed. No change needed.
+- parseFix had the same gap parseCandidates did: it validated presence and coerced
+  types but didn't bound field length, and the diff + explanation are persisted. Bounded
+  explanation (2KB), diff (50KB), fixedSource (100KB) against oversized model output. +1 test.
+- Suite 238 green across 10 packages.
