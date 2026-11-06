@@ -723,4 +723,4 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   (matters once analyzers feed the hunt). Now ENOENT -> available:false, while a numeric
   exit code (Slither/Aderyn exit non-zero when they find issues) still parses the output.
   Added an optional bin param so the not-installed path is deterministically tested. +1 test.
-- Suite 251 green across 10 packages.
+- Suite 250 green across 10 packages.
