@@ -69,7 +69,7 @@ export default async function ScanPage({ params }: { params: Promise<{ id: strin
           {findings.map((f) => {
             const c = CONSENSUS_LABEL[f.consensus] ?? { label: f.consensus, hue: 'neutral' as const };
             return (
-              <Link key={f.id} href={`/findings/${f.id}`} className={`group flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${f.isRed ? 'border-border hover:border-destructive/40' : 'border-border'}`}>
+              <Link key={f.id} href={`/findings/${f.id}`} className={`group flex items-center gap-3 rounded-lg border bg-card p-3 outline-none transition-[transform,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] focus-visible:ring-2 focus-visible:ring-ring/50 motion-safe:active:scale-[0.99] ${f.isRed ? 'border-border hover:border-destructive/40' : 'border-border'}`}>
                 <span className={`flex size-7 items-center justify-center rounded-md ${f.isRed ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>
                   <Icon icon={Bug01Icon} size={14} />
                 </span>
