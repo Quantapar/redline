@@ -792,3 +792,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   which orchestrates the whole `redline scan` (router + engine) and needs full mocking —
   it's exercised end-to-end by the CLI help/arg tests, left for a dedicated harness.
   +2 tests. Suite 263 green.
+
+## 2026-11-06 — cover runLocalScan; untested-exports sweep complete
+
+- runLocalScan drives the `redline scan <dir>` command (hunt + council over local targets,
+  no DB). Made its router client injectable (defaults to the real 0G client) and added two
+  tests with a FakeRouterClient + the simulation engine: a genuine exploit yields a red
+  finding, a non-reproducing one yields none and never overruns the budget cap. This was
+  the last exported function without a dedicated unit test — the export-vs-test sweep is
+  now complete. +2 tests. Suite 265 green.

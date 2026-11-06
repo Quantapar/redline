@@ -68,3 +68,33 @@ describe('isDir', () => {
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });
+
+import { runLocalScan } from '../src/scan.js';
+import { FakeRouterClient } from '@redline/hunters';
+
+describe('runLocalScan — hunt + council over local targets, no DB', () => {
+  const target = { contractName: 'EtherVault', filePath: 'src/EtherVault.sol', source: 'contract EtherVault { function withdraw() external {} }', changedFunctions: ['withdraw'], analyzerNotes: [] };
+
+  it('reports a red finding when the council reproduces a genuine exploit', async () => {
+    const client = new FakeRouterClient(() => JSON.stringify({ candidates: [{
+      weaknessClass: 'reentrancy', targetFunction: 'withdraw', summary: 'drains the vault',
+      forgeTest: '// @redline-sim exploitable=true netWei=5000000000000000000 cheatDependent=false flaky=false\nfunction t() public {}',
+      claimedValueWei: '5000000000000000000', usedShortcuts: false,
+    }] }));
+    const report = await runLocalScan({ targets: [target], policy: { version: 1, rules: [] }, budgetCents: 500, forceSimulation: true, client });
+    expect(report.candidateCount).toBe(1);
+    expect(report.red).toHaveLength(1);
+    expect(report.red[0]!.contract).toBe('EtherVault');
+  });
+
+  it('reports no red when the exploit does not reproduce, and respects the budget', async () => {
+    const client = new FakeRouterClient(() => JSON.stringify({ candidates: [{
+      weaknessClass: 'reentrancy', targetFunction: 'withdraw', summary: 'maybe',
+      forgeTest: '// @redline-sim exploitable=false netWei=0 cheatDependent=false flaky=false\nfunction t() public {}',
+      claimedValueWei: '0', usedShortcuts: false,
+    }] }));
+    const report = await runLocalScan({ targets: [target], policy: { version: 1, rules: [] }, budgetCents: 500, forceSimulation: true, client });
+    expect(report.red).toHaveLength(0);
+    expect(report.spentCents).toBeLessThanOrEqual(500); // never overran the cap
+  });
+});

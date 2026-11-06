@@ -69,7 +69,7 @@ export async function isDir(path: string): Promise<boolean> {
 }
 
 import { BudgetGuard, type Candidate } from '@redline/shared';
-import { OGRouterClient, huntSwarm } from '@redline/hunters';
+import { OGRouterClient, huntSwarm, type RouterClient } from '@redline/hunters';
 import { SimulationRefereeEngine, createRefereeEngine, runCouncil, type RefereeEngine } from '@redline/engine';
 
 export interface LocalScanReport {
@@ -85,8 +85,10 @@ export async function runLocalScan(opts: {
   budgetCents: number;
   forceSimulation?: boolean;
   onProgress?: (m: string) => void;
+  /** injectable for tests; defaults to the real 0G router client */
+  client?: RouterClient;
 }): Promise<LocalScanReport> {
-  const client = new OGRouterClient();
+  const client = opts.client ?? new OGRouterClient();
   const engine: RefereeEngine = opts.forceSimulation
     ? new SimulationRefereeEngine()
     : await createRefereeEngine();
