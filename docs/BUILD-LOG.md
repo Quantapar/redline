@@ -683,3 +683,11 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   (not the dependency dir lib/) and a contract file merely NAMED Testable/Mock are
   SCANNED; vendored lib/ and node_modules/, nested src/mocks/, and a capital-T src/Tests/
   dir are IGNORED (case-insensitive). +2 tests. Suite 249 green.
+
+## 2026-11-06 — health check fails fast when Redis is down
+
+- The /api/health Redis probe had no connectTimeout, so a down Redis made the check
+  wait ioredis's ~10s default before reporting 'down' — long enough for a load balancer
+  to time out the whole health check and cascade. Added connectTimeout: 2000. The check
+  already had correct 200/503 semantics and no connection leak; this just makes the
+  unhealthy case fail fast. Verified the healthy path still returns 200 quickly.

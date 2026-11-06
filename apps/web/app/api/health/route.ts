@@ -13,7 +13,14 @@ export async function GET() {
     checks.db = 'ok';
   } catch { /* down */ }
 
-  const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: 1, lazyConnect: true });
+  // Fail fast when Redis is unreachable: without a short connectTimeout, ioredis
+  // waits ~10s by default, long enough for a load balancer to time out the whole
+  // health check and cascade. 2s is plenty to confirm a reachable Redis.
+  const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+    maxRetriesPerRequest: 1,
+    lazyConnect: true,
+    connectTimeout: 2000,
+  });
   try {
     await redis.connect();
     await redis.ping();
