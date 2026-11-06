@@ -76,7 +76,8 @@ export function Dots({ step, total }: { step: number; total: number }) {
 /** Display heading shared by every screen before the report. */
 export const HEADING = "text-[30px] leading-[1.1] font-medium tracking-[-0.025em] text-ink text-balance sm:text-[36px]";
 // The first step's title: the same face, a size up
-const HERO_HEADING = "text-[36px] leading-[1.05] font-medium tracking-[-0.03em] text-ink text-balance sm:text-[46px]";
+// On wider screens it reaches past the 520px column so the title stays on one line
+const HERO_HEADING = "text-[36px] leading-[1.05] font-medium tracking-[-0.03em] text-ink text-balance sm:-mx-24 sm:text-[46px]";
 
 export function StepHeading({
   title,
