@@ -754,3 +754,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   three agreeing moved runs counts once (8 ETH not 18), native beats token deltas, and a
   malformed/missing delta contributes zero. getStats re-verified to still return 108.5 ETH.
   +4 tests. Suite 255 green.
+
+## 2026-11-06 — coverage sweep: test the referee-engine factory
+
+- Cross-referenced exported functions against test references to find real gaps
+  objectively (no coverage pkg installed, so by inspection). Most untested exports are
+  trivial wrappers (createRedis, closeDb, isDir) or tested cross-package
+  (cancelScanIfActive, in the worker suite). The meaningful one was createRefereeEngine
+  — the dispatch that decides whether referees run the REAL Foundry engine or the
+  deterministic simulation. Added tests: preferSimulation always yields the sim engine,
+  and without Foundry the factory never picks the real engine that can't run. +2 tests.
+  Suite 257 green.
