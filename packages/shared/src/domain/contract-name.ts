@@ -19,11 +19,46 @@ const RESERVED = new Set([
   'pragma', 'new', 'this', 'super',
 ]);
 
-/** Remove line comments and block comments without disturbing string content materially. */
+/**
+ * Remove line and block comments in ONE linear pass. Source is PR-author
+ * controlled, so this must not backtrack: the old `/\/\*[\s\S]*?\*\//g` rescanned
+ * to the end of input from every unterminated `/*`, which is quadratic on input
+ * like '/*' + 'a/*'.repeat(n) (CodeQL js/polynomial-redos). String literals are
+ * copied verbatim, so a `//` or `/*` inside "https://…" is not taken as a comment.
+ */
 function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/\/\/[^\n]*/g, ' ');
+  const out: string[] = [];
+  const n = source.length;
+  let plain = 0; // start of the current run of ordinary code
+  let i = 0;
+  while (i < n) {
+    const c = source.charCodeAt(i);
+    if (c === 47 /* / */ && i + 1 < n) {
+      const d = source.charCodeAt(i + 1);
+      if (d === 47 /* / */ || d === 42 /* * */) {
+        out.push(source.slice(plain, i), ' ');
+        const end = d === 47 ? source.indexOf('\n', i + 2) : source.indexOf('*/', i + 2);
+        if (end === -1) return out.join(''); // comment runs to end of input
+        i = d === 47 ? end : end + 2; // keep the newline that ends a line comment
+        plain = i;
+        continue;
+      }
+    }
+    if (c === 34 /* " */ || c === 39 /* ' */) {
+      let j = i + 1;
+      while (j < n) {
+        const k = source.charCodeAt(j);
+        if (k === 92 /* \ */) { j += 2; continue; }
+        if (k === c || k === 10 /* \n */) break;
+        j++;
+      }
+      i = j + 1;
+      continue;
+    }
+    i++;
+  }
+  out.push(source.slice(plain));
+  return out.join('');
 }
 
 /** The base name of a Solidity file, without directories or the .sol extension. */
