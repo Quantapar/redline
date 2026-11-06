@@ -43,7 +43,7 @@ Usage:
   redline policy init        create a starter ${POLICY_PATH}
 
   redline scan <dir>         hunt + council over a local Solidity project
-                             [--budget <cents>] [--sim]
+                             [--budget <cents>] [--sim] [--json]
   redline verify-deploy      gate a deploy on the council's verdict for a version
                              --repo <owner/repo> --version <sha> [--url <app url>] [--json]
 
@@ -98,6 +98,10 @@ export async function main(argv: string[]): Promise<number> {
         forceSimulation: flags.sim === 'true',
         onProgress: (m) => console.log(`  ${m}`),
       });
+      if (flags.json === 'true') {
+        console.log(JSON.stringify(report));
+        return report.red.length > 0 ? 2 : 0;
+      }
       console.log(`\n${report.candidateCount} candidate(s), ${report.red.length} reproduced (red). spent ~${report.spentCents}c.`);
       for (const r of report.red) {
         console.log(`  RED [${r.weaknessClass}] ${r.contract} — council ${r.agreement}`);
