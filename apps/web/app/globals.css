@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+/* The ported onboarding flow's design system, scoped to .kobra-flow. */
+@import "./flow.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -183,6 +186,8 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+  --font-heading: var(--font-heading);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

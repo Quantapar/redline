@@ -1,0 +1,39 @@
+/**
+ * Turns whatever someone pastes into the onboarding field into a GitHub owner and,
+ * when present, a repository: `octocat`, `@octocat`, `octocat/vault`,
+ * `github.com/octocat`, `https://github.com/octocat/vault/tree/main/src`,
+ * `git@github.com:octocat/vault.git`. Returns null for anything that can't be a
+ * GitHub account, so the server never builds an API path from raw input.
+ */
+export interface GithubTarget {
+  owner: string;
+  repo: string | null;
+}
+
+// GitHub logins: 1–39 chars, alphanumerics and single hyphens, not at the edges.
+const OWNER = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
+// Repository names: letters, digits, '.', '-', '_' (but never just '.' or '..').
+const REPO = /^[\w.-]{1,100}$/;
+
+export function parseGithubTarget(input: string): GithubTarget | null {
+  let s = input.trim();
+  if (!s) return null;
+
+  s = s.replace(/^git@github\.com:/i, '');
+  s = s.replace(/^(?:https?:\/\/)?(?:www\.)?github\.com(?:\/|$)/i, '');
+  // Something else that looks like a URL (gitlab.com/…, a contract site) isn't ours.
+  if (/^[a-z][\w+.-]*:\/\//i.test(s) || /^[\w-]+\.[a-z]{2,}(?:\/|$)/i.test(s)) return null;
+  s = s.replace(/^@/, '').replace(/[?#].*$/, '');
+
+  const parts = s.split('/').filter(Boolean);
+  // github.com/orgs/acme/… is the org's own page
+  if (parts[0]?.toLowerCase() === 'orgs') parts.shift();
+
+  const owner = parts[0];
+  if (!owner || !OWNER.test(owner)) return null;
+
+  const rawRepo = parts[1]?.replace(/\.git$/i, '');
+  if (!rawRepo) return { owner, repo: null };
+  if (!REPO.test(rawRepo) || rawRepo === '.' || rawRepo === '..') return null;
+  return { owner, repo: rawRepo };
+}
