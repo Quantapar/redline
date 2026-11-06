@@ -870,3 +870,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   could hit flaky failures. It also predated the production-build step added to CI this
   session. Corrected to the serial test command plus the web build, and referenced the
   `pnpm verify` shortcut. SETUP.md checked — it has no parallel-test command, so no change.
+
+## 2026-11-06 — .env.example documents every env var the code reads
+
+- Cross-referenced process.env.* reads against .env.example. Five were undocumented:
+  ARCHIVE_RPC_URLS (the comma-separated multi-provider form the code prefers, which powers
+  real referee independence — a deployer following the example would have missed it),
+  SCAN_CONCURRENCY (worker tuning), PORT (the GitHub App's port), and REDLINE_URL (the
+  CLI's deploy-check base URL). Added all four with their defaults; only TEST_DATABASE_URL
+  remains undocumented, correctly, as a test/CI-only var. A deployer now has a complete,
+  accurate env reference.
