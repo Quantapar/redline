@@ -494,3 +494,15 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   and for storage, but flagged in code (prepare.ts) and NEED-FROM-YOU that the future
   Foundry src-prep must normalise it and reject traversal before any local disk write.
 - Suite: 218 green across 10 packages.
+
+## 2026-11-06 — a11y + error-state polish (interactive components)
+
+- **aria-busy on async actions.** RunScanButton and FindingStatusControl showed
+  their pending state only visually (spinner / disabled). Added aria-busy so a
+  screen reader announces the in-flight action. The label is not rewritten to a
+  status (per the design guidance); the pending cue is the spinner plus aria-busy.
+- **No more silent failure.** FindingStatusControl did nothing visible when the
+  status request failed — the user clicked Resolve and the UI just sat there. It
+  now shows a role="alert" message and leaves the action available to retry. The
+  FixItButton already handled errors; this brings the two to parity.
+- Suite: 219 green across 10 packages.

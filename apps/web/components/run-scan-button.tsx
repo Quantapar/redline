@@ -28,7 +28,7 @@ export function RunScanButton({ repoId, label = 'Run a scan' }: { repoId?: strin
   }
 
   return (
-    <Button variant="default" onClick={run} disabled={loading}>
+    <Button variant="default" onClick={run} disabled={loading} aria-busy={loading}>
       {loading ? <Spinner /> : <Icon icon={Target01Icon} size={16} />}
       {label}
     </Button>

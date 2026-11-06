@@ -29,4 +29,15 @@ describe('FindingStatusControl', () => {
     expect(screen.getByText('Reopen')).toBeDefined();
     expect(screen.queryByText('Resolve')).toBeNull();
   });
+
+  it('surfaces an error (does not fail silently) when the request fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<FindingStatusControl findingId="f1" status="open" />);
+    fireEvent.click(screen.getByText('Resolve'));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
+    expect(refresh).not.toHaveBeenCalled();
+    // status did not flip to resolved, so Resolve is still offered
+    expect(screen.getByText('Resolve')).toBeDefined();
+  });
 });
