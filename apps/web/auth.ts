@@ -1,9 +1,16 @@
-import NextAuth from 'next-auth';
+import NextAuth, { type DefaultSession } from 'next-auth';
 import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { schema } from '@redline/db';
 import { db } from '@/lib/db';
+
+// Surface the auth_user id on the session type so the data layer can read it.
+declare module 'next-auth' {
+  interface Session {
+    user: { id: string } & DefaultSession['user'];
+  }
+}
 
 /**
  * Auth.js (NextAuth v5) — "Sign in with GitHub" and "Sign in with Google".
@@ -38,4 +45,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: 'database' },
   trustHost: true,
   pages: { signIn: '/login' },
+  callbacks: {
+    // Database sessions: surface the auth_user id on the session so the data
+    // layer can resolve the viewer's GitHub account and scope every query to
+    // the repositories they actually own. Without this, the dashboard would
+    // show every tenant's data to every signed-in user.
+    session({ session, user }) {
+      if (session.user) session.user.id = user.id;
+      return session;
+    },
+  },
 });
