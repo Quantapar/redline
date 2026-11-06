@@ -104,5 +104,7 @@ redline scan ./my-contracts
 redline verify-deploy --repo acme-defi/vault-core --version "$GIT_SHA" || exit 1
 ```
 
+Or run the whole stack (with the real Foundry council in the worker) with `docker compose up`.
+
 See `docs/DEMO.md` for the two-minute demo, `docs/SETUP.md` to run it, `docs/MCP.md` for the
 connector, and `docs/GITHUB_APP.md` to register the app.

@@ -384,3 +384,8 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   (matches the webhook-forwarding doc). Live smoke confirms it now starts cleanly and degrades
   gracefully without secrets ("configure APP_ID and PRIVATE_KEY in .env").
 - Worker process live smoke: starts and listens on the queue.
+
+## 2026-11-06 — containerized deployment
+- docker-compose (postgres, redis, web, worker) + Dockerfiles. The worker image installs Foundry,
+  so `docker compose up` runs the REAL fork-based council in-container without a host install
+  (the host sandbox blocks Foundry). compose syntax validated. Addresses the sealed-room deployment.

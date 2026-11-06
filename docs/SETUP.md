@@ -28,6 +28,17 @@ pnpm --filter @redline/web dev        # dashboard on http://localhost:3000
 pnpm --filter @redline/worker start   # scan worker (BullMQ)
 ```
 
+## Run with Docker (full stack + the real Foundry council)
+`docker compose up` brings up Postgres, Redis, the dashboard, and the scan worker. The worker image
+ships Foundry, so the real fork-based council runs inside the container without any host install.
+
+```bash
+cp .env.example .env     # fill in OG_ROUTER_API_KEY, ARCHIVE_RPC_URLS, ENCRYPTION_KEY
+docker compose up --build
+```
+
+The dashboard is on http://localhost:3000; the worker processes scans off the queue.
+
 ## Web app env (apps/web/.env.local)
 The Next.js app reads its own `.env.local` (gitignored). It needs:
 ```
