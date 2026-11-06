@@ -656,3 +656,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   mismatch), case-insensitive on addresses. Added two defensive edges: an on-chain owner
   that reads as '' (falsy but not null) still locks, and an empty signer never matches a
   real owner. +2 tests. Suite 244 green.
+
+## 2026-11-06 — fix cancel-vs-complete race
+
+- cancelScan read the scan status, then unconditionally wrote 'cancelled' at the end.
+  If the worker completed the scan in the window between that read and the write, a
+  finished scan (with findings) got mislabeled 'cancelled'. Added cancelScanIfActive, an
+  atomic compare-and-set (UPDATE ... WHERE status NOT IN terminal) so a scan that reached
+  a terminal state during the race is never overwritten; cancelScan now reports the real
+  state instead. Also treats an already-'cancelled' scan as terminal. +2 tests. Suite 248 green.

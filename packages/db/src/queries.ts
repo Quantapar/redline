@@ -1,6 +1,8 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, notInArray } from 'drizzle-orm';
 import type { Database } from './client.js';
 import * as s from './schema.js';
+
+const TERMINAL_SCAN_STATUSES = ['complete', 'failed', 'cancelled'] as const;
 
 // ---- Scans ----
 export async function createScan(
@@ -39,6 +41,21 @@ export async function setScanStatus(
   patch: Partial<typeof s.scans.$inferInsert> = {},
 ) {
   await db.update(s.scans).set({ status, ...patch }).where(eq(s.scans.id, scanId));
+}
+
+/**
+ * Atomically cancel a scan ONLY if it has not already reached a terminal state.
+ * This is a compare-and-set: if the worker completes (or fails, or another cancel
+ * lands) in the race window, this updates zero rows and returns false, so a
+ * finished scan is never overwritten with 'cancelled'. Returns true iff it cancelled.
+ */
+export async function cancelScanIfActive(db: Database, scanId: string): Promise<boolean> {
+  const rows = await db
+    .update(s.scans)
+    .set({ status: 'cancelled', finishedAt: new Date() })
+    .where(and(eq(s.scans.id, scanId), notInArray(s.scans.status, [...TERMINAL_SCAN_STATUSES])))
+    .returning({ id: s.scans.id });
+  return rows.length > 0;
 }
 
 export async function getScan(db: Database, scanId: string) {
