@@ -897,3 +897,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   repositories connected yet..." Combined with the dashboard fix, every page now handles
   the zero-data first-run case (findings/repositories/recipes already used the Empty
   component). Typecheck + production build pass; demo paths still render.
+
+## 2026-11-06 — caught + fixed a broken demo (finding pages 500 on decrypt)
+
+- A live check of a finding detail page returned 500. Diagnosed: getFindingDetail decrypts
+  the stored (enc:v1:-prefixed) attack, and the running dev server had no ENCRYPTION_KEY at
+  runtime, so decrypt threw "ENCRYPTION_KEY required". Both .env and apps/web/.env.local have
+  the correct matching key, so this was a stale/misstarted server process, not a code/config
+  defect. Restarted the dev server with the key loaded; both red and non-red finding pages
+  now render 200 (red: reproduced proof + redacted attack; non-red: Logic error / Not
+  reproduced / Not saved) and all 7 routes are 200. Demo data intact (3 repos, 2 red, 1 non-red).
+  The core finding-view flow — the heart of the demo — would otherwise have been broken on wake.
