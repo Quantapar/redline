@@ -1,9 +1,9 @@
 import {
-  BudgetGuard, type Policy, type Candidate, type Finding,
+  BudgetGuard, WeaknessClass, type Policy, type Candidate, type Finding,
 } from '@redline/shared';
 import {
   type Database, setScanStatus, getScan, insertCandidate, insertRefereeRuns,
-  insertFinding, insertRegressionTest, listRecipes, encrypt, schema,
+  insertFinding, insertRegressionTest, listActiveRegressionTests, listRecipes, encrypt, decrypt, schema,
 } from '@redline/db';
 import { runCouncil, type RefereeEngine, type CouncilDispatch } from '@redline/engine';
 import { huntSwarm, type RouterClient, type HuntTarget } from '@redline/hunters';
@@ -105,7 +105,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   });
 
   // Persist candidates, keep db ids.
-  const dbCandidates: { domain: Candidate; dbId: string }[] = [];
+  const dbCandidates: { domain: Candidate; dbId: string; isRegression?: boolean }[] = [];
   for (const c of candidates) {
     const row = await insertCandidate(db, {
       scanId,
@@ -123,6 +123,29 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
     });
     dbCandidates.push({ domain: c, dbId: row.id });
   }
+
+  // Re-run the forever-tests: every attack saved from a past red finding on this
+  // repo, verified again so a fixed bug cannot quietly come back.
+  const regTests = await listActiveRegressionTests(db, scan.repositoryId);
+  if (regTests.length) emit({ type: 'log', scanId, message: `re-running ${regTests.length} forever-test(s)`, at: now() });
+  for (const rt of regTests) {
+    const forgeTest = decrypt(rt.forgeTest);
+    const wc = WeaknessClass.safeParse(rt.weaknessClass);
+    const contract = forgeTest.match(/contract\s+(\w+)/)?.[1] ?? 'contract';
+    const regCand: Candidate = {
+      id: `reg_${rt.id}`, scanId, hunterModel: 'forever-test', modelReceipt: null,
+      weaknessClass: wc.success ? wc.data : 'other', targetContract: contract, targetFunction: null,
+      summary: 'A saved attack from a past finding, re-run to catch a regression.',
+      forgeTest, steps: [], claimedValueWei: '0', usedShortcuts: false, createdAt: now(),
+    };
+    const row = await insertCandidate(db, {
+      scanId, hunterModel: 'forever-test', modelReceipt: null, weaknessClass: regCand.weaknessClass,
+      targetContract: contract, contractSource: null, targetFunction: null, summary: regCand.summary,
+      forgeTest: encrypt(forgeTest), steps: [], claimedValueWei: '0', usedShortcuts: false,
+    });
+    dbCandidates.push({ domain: regCand, dbId: row.id, isRegression: true });
+  }
+
   if (await isCancelled()) return await stopCancelled();
   await setScanStatus(db, scanId, 'hunting', { candidateCount: candidates.length, spentCents: budget.spentCents });
 
@@ -131,7 +154,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   const dispatch: CouncilDispatch = deps.council ?? DEFAULT_COUNCIL_DISPATCH;
   const priorKeys = new Set<string>();
 
-  for (const { domain: c, dbId } of dbCandidates) {
+  for (const { domain: c, dbId, isRegression } of dbCandidates) {
     try {
     const { runs, result } = await runCouncil(deps.engine, c, dispatch);
     for (const r of runs) {
@@ -162,7 +185,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
       scanId,
       candidateId: dbId,
       weaknessClass: c.weaknessClass,
-      title: `${c.weaknessClass} in ${c.targetContract}`,
+      title: isRegression ? `Regression: ${c.weaknessClass} in ${c.targetContract}` : `${c.weaknessClass} in ${c.targetContract}`,
       plainSentence: c.summary,
       consensus: result.consensus,
       isRed,
@@ -179,8 +202,9 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
     if (isRed) {
       redCount += 1;
       priorKeys.add(`${c.weaknessClass}:${c.targetContract}:${c.targetFunction ?? ''}`);
-      // Save the attack as a permanent regression test (the forever-test).
-      await insertRegressionTest(db, {
+      // Save the attack as a forever-test — but only on first discovery, never when a
+      // forever-test re-reproduces (it is already saved), so they don't accumulate.
+      if (!isRegression) await insertRegressionTest(db, {
         repositoryId: scan.repositoryId,
         findingId: findingRow.id,
         weaknessClass: c.weaknessClass,

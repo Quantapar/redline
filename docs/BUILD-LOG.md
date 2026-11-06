@@ -404,3 +404,9 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - When a fast scan finishes before the browser's SSE connects (the poll fallback catches it), the log
   now says "This scan finished before the live view connected — see the results below" instead of a
   confusing "Waiting for the first attack…". Caught by live verification.
+
+## 2026-11-06 — forever-tests re-run (brief feature)
+- Every scan now re-runs the repo's saved attacks (the forever-tests) through the council, decrypting
+  each, so a fixed bug cannot quietly come back — a reproduced one is flagged "Regression:". The save
+  is guarded to the original discovery so they don't accumulate. New test covers the re-run.
+- Totals: 208 tests across 10 packages, all green.

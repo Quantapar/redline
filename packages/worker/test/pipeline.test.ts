@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { createScan, setScanStatus, decrypt, schema } from '@redline/db';
+import { createScan, setScanStatus, decrypt, encrypt, insertRegressionTest, schema } from '@redline/db';
 import { SimulationRefereeEngine } from '@redline/engine';
 import { FakeRouterClient, type HuntTarget } from '@redline/hunters';
 import { DEFAULT_POLICY } from '@redline/shared';
@@ -119,6 +119,28 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
     expect(result.redCount).toBe(0);
     const finalScan = (await handle.db.select().from(schema.scans))[0]!;
     expect(finalScan.status).toBe('cancelled'); // NOT overwritten to complete
+  });
+
+  it('re-runs a saved forever-test and flags a regression when it reproduces', async () => {
+    const repo = await seedRepo(handle.db);
+    // a previously-saved attack (encrypted at rest) that still reproduces
+    const attack = '// @redline-sim exploitable=true netWei=5000000000000000000 cheatDependent=false flaky=false\ncontract EtherVault {} function testExploit() public {}';
+    await insertRegressionTest(handle.db, { repositoryId: repo.id, weaknessClass: 'reentrancy', forgeTest: encrypt(attack), active: true });
+
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'reg1' });
+    const emptyClient = new FakeRouterClient(() => JSON.stringify({ candidates: [] })); // no new hunt findings
+    const result = await runScan({
+      db: handle.db, client: emptyClient, engine: new SimulationRefereeEngine(),
+      prepare: async () => ({ targets: [target], policy: DEFAULT_POLICY }),
+    }, scan.id);
+
+    expect(result.redCount).toBe(1); // the forever-test reproduced
+    const finding = result.findings[0]!;
+    expect(finding.isRed).toBe(true);
+    expect(finding.title).toMatch(/^Regression:/);
+    // it must NOT create a second regression test (already saved)
+    const regs = await handle.db.select().from(schema.regressionTests);
+    expect(regs).toHaveLength(1);
   });
 
   it('completes with zero findings when the swarm proposes nothing', async () => {
