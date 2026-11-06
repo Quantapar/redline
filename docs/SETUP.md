@@ -50,6 +50,10 @@ ENCRYPTION_KEY=...         # 32-byte base64; encrypts saved attacks at rest
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
+## Check your setup
+`pnpm smoke` verifies every external dependency (Postgres, Redis, the 0G router, the archive RPC,
+and whether Foundry is installed) and exits non-zero if any is unreachable.
+
 ## Keys (.env)
 - `OG_ROUTER_API_KEY` — the model router. Blank → the model layer uses fixtures.
 - `ARCHIVE_RPC_URL` — archive RPC for forking a chain at a block.
