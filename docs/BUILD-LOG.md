@@ -889,3 +889,11 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   a matching empty row: "No scans yet. Connect a repository and open a pull request, or run
   a scan to see results here." Typecheck + production build pass; the demo (non-empty) path
   still renders.
+
+## 2026-11-06 — going-live empty state; first-run UX now complete
+
+- going-live mapped over repo gates with no empty handling: a new user (no repos) saw the
+  deploy-lock card and verify-deploy command but a blank per-repo section. Added "No
+  repositories connected yet..." Combined with the dashboard fix, every page now handles
+  the zero-data first-run case (findings/repositories/recipes already used the Empty
+  component). Typecheck + production build pass; demo paths still render.
