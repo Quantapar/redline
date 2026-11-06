@@ -1,0 +1,39 @@
+# CodeQL static analysis (SAST). Finds injection, auth, and data-flow issues in
+# our TypeScript before they ship, and reports them as code-scanning alerts and a
+# check on every push and pull request. Also runs weekly to catch newly-published
+# query improvements against unchanged code.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '27 3 * * 1' # Mondays 03:27 UTC
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # security-and-quality adds the maintainability queries on top of the
+          # default security set.
+          queries: security-and-quality
+      # Interpreted languages need no build; autobuild is a no-op that keeps the
+      # action's contract satisfied.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
