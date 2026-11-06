@@ -27,11 +27,12 @@ stays locked until you prove you control the contract):
 3. **Every change** is probed incrementally — only what changed, plus connected code.
 4. **Referee council** re-runs each candidate as plain transactions on independent
    fresh forks. A finding is red only if the referees agree value moved.
-5. **Fix it** opens a PR with the smallest fix and saves the attack as a permanent
-   regression test that re-runs on every future change, so a fixed bug can't quietly
-   return. (Re-attacking the proposed fix on a fresh fork before merge activates with
-   Foundry; until then the saved attack guards every later scan.)
-6. **Going-live gates** block red code from merging or deploying.
+5. **Fix it** generates the smallest fix (a diff and an explanation) and saves the attack
+   as a permanent regression test that re-runs on every future change, so a fixed bug
+   can't quietly return. (Opening the branch as a PR, and re-attacking the fix on a fresh
+   fork before merge, activate with the GitHub-write and Foundry integrations.)
+6. **Going-live gate** — `redline verify-deploy` exits non-zero on a red or unchecked
+   version, so CI or a pre-deploy hook can refuse to ship it.
 
 The referee council is the heart of the product: the search can vary and cut corners,
 but the verdict is a consensus of real runs voting on one fact — *did the money move?*
@@ -53,10 +54,12 @@ We say "survived these attacks, at this time."
   the attack as plain transactions, so a cheat-dependent "exploit" never raises an alarm.
 - **Model swarm** — a model-agnostic router client runs cheap models first and escalates only
   where they stall, under a hard per-scan budget cap.
-- **Fix it** — reads the vulnerable contract and opens a reviewed PR with the smallest fix and the
-  attack saved as a permanent regression test. Or use the **MCP connector** so your own AI tool fixes it.
-- **Going-live gates** — a reproduced finding blocks the merge, the deploy (ENS deploy lock), and a
-  Safe multisig deploy.
+- **Fix it** — reads the vulnerable contract and generates a reviewed fix (a diff plus a plain
+  explanation) with the attack saved as a permanent regression test. Opening the branch as a GitHub
+  PR is the next integration step. Or use the **MCP connector** so your own AI tool writes the fix.
+- **Going-live gates** — a reproduced finding blocks a deploy through `redline verify-deploy`, which
+  exits non-zero on a red or unchecked version (wire it into CI or a pre-deploy hook). An on-chain
+  ENS deploy-lock and a Safe multisig guard are the planned extension, not yet wired.
 - **Watch mode** — a new hack appears, becomes a recipe, and re-tests every repo.
 - **Security policy** — plain-English rules in `.redline/policy.yml`, managed with `redline policy`.
 - **Recipe library** — a shared, public library of attack patterns the swarm pulls on every scan.

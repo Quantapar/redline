@@ -44,7 +44,7 @@ export default async function GoingLivePage() {
       <Card className="p-4">
         <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
           <Icon icon={JusticeScale01Icon} size={14} />
-          Deploy lock controlled by <span className="font-mono text-foreground">{COUNCIL_KEY}</span> (ENS Enhanced Access Control)
+          Deploy lock to be held by <span className="font-mono text-foreground">{COUNCIL_KEY}</span> (ENS Enhanced Access Control — planned)
         </div>
       </Card>
 

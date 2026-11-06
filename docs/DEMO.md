@@ -34,8 +34,13 @@ on a copy where nothing real is at stake — and only then raises an alarm.
 - The council consensus, the two-room cheat defense, the budget cap, and the
   ownership gate are all enforced in code and unit-tested.
 
-## What needs Foundry (honest scope)
-Referees currently vote on a deterministic simulation of each attack, not a real
-fork execution. Installing Foundry switches the engine to the real fork-based
-referee and enables re-attacking a proposed fix before merge. Nothing here claims a
-real-fork proof until that is on; see SECURITY.md for the isolation that step adds.
+## Honest scope: wired vs planned
+- **Referees run on a deterministic simulation**, not a real fork, until Foundry is
+  installed. Foundry switches the engine to the real fork-based referee and enables
+  re-attacking a proposed fix before merge. Nothing claims a real-fork proof until
+  then; SECURITY.md covers the isolation that step adds.
+- **Fix it generates a diff and explanation** and saves the forever-test; it does not
+  yet open the branch as a GitHub PR (that needs the App's write scope wired).
+- **The deploy gate is `redline verify-deploy`** against the DB-backed council verdict.
+  The on-chain ENS deploy-lock and Safe multisig guard are planned, not yet wired — the
+  unlock *policy* logic exists and is tested, the on-chain binding does not.

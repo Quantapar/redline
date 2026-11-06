@@ -519,3 +519,16 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   scope is explicit for anyone reading the repo.
 - Verified the documented setup: `pnpm smoke` passes (Postgres, Redis, 0G 125 models,
   archive RPC block live, Foundry correctly reported absent).
+
+## 2026-11-06 — more doc/UI honesty: PR-opening and ENS/Safe scoped
+
+- Verified every README feature claim against the code. Two more overclaims:
+  - "Fix it opens a reviewed PR" — the fix route generates a diff + explanation and
+    stores a branch name; it does NOT call GitHub to open a PR. Reworded to "generates
+    a reviewed fix", with PR-opening named as the integration step.
+  - "Going-live gates ... ENS deploy lock ... Safe multisig deploy" — there is no ENS
+    or Safe code at all (only the DB-backed `redline verify-deploy` gate is real, and
+    the unlock policy logic). Scoped ENS/Safe as planned in the README, the going-live
+    page label, and DEMO.md.
+- DEMO.md now has a single "Honest scope: wired vs planned" section covering Foundry,
+  PR-opening, and ENS/Safe, so the repo reads consistently for a public audience.
