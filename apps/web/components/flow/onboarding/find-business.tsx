@@ -163,9 +163,10 @@ export function FindBusiness({ onPick }: { onPick: (account: GithubAccount) => v
           Connect
         </PendingButton>
       }
+      raised
       after={<SourceRadar business={selected ? label(selected) : null} />}
     >
-      <StepHeading title="Let’s secure your contracts">
+      <StepHeading hero title="Let’s secure your contracts">
         We’ll attack every contract on a mainnet fork and show you what provably moves.
         Free, about 3 minutes.
       </StepHeading>
@@ -221,7 +222,6 @@ export function FindBusiness({ onPick }: { onPick: (account: GithubAccount) => v
             role="combobox"
             aria-expanded={open}
             aria-controls="find-results"
-            aria-describedby="github-target-hint"
             className={cn(
               "h-12 rounded-[12px] bg-card pl-10 text-base md:text-base [&::-webkit-search-cancel-button]:hidden",
               q ? "pr-3" : "pr-44",
@@ -302,11 +302,6 @@ export function FindBusiness({ onPick }: { onPick: (account: GithubAccount) => v
             </AnimatePresence>
           </div>
         </div>
-        <p id="github-target-hint" className="mt-2 text-sm text-ink-3">
-          {selected && !selected.installUrl
-            ? "The Redline GitHub App isn’t configured on this server yet (GITHUB_APP_SLUG)."
-            : "Next, pick the repository to attack from their GitHub."}
-        </p>
       </form>
     </StepShell>
   );

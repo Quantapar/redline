@@ -20,6 +20,7 @@ export function StepShell({
   footer,
   note,
   after,
+  raised = false,
 }: {
   children: React.ReactNode;
   footer: React.ReactNode;
@@ -27,11 +28,14 @@ export function StepShell({
   note?: React.ReactNode;
   /** Fills the page below the actions, edge to edge. It clears the prototype bar itself. */
   after?: React.ReactNode;
+  /** Sits higher on the page: the first step, whose heading is the page's title. */
+  raised?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "mx-auto flex h-[calc(100dvh-4rem)] w-full max-w-[520px] flex-col px-5 pt-[calc(clamp(20px,5.5vh,60px)+30px)] sm:px-0",
+        "mx-auto flex h-[calc(100dvh-4rem)] w-full max-w-[520px] flex-col px-5 sm:px-0",
+        raised ? "pt-[clamp(12px,3.5vh,40px)]" : "pt-[calc(clamp(20px,5.5vh,60px)+30px)]",
         !after && BAR_CLEARANCE,
       )}
     >
@@ -71,11 +75,21 @@ export function Dots({ step, total }: { step: number; total: number }) {
 
 /** Display heading shared by every screen before the report. */
 export const HEADING = "text-[30px] leading-[1.1] font-medium tracking-[-0.025em] text-ink text-balance sm:text-[36px]";
+// The first step's title: the same face, a size up
+const HERO_HEADING = "text-[36px] leading-[1.05] font-medium tracking-[-0.03em] text-ink text-balance sm:text-[46px]";
 
-export function StepHeading({ title, children }: { title: React.ReactNode; children?: React.ReactNode }) {
+export function StepHeading({
+  title,
+  children,
+  hero = false,
+}: {
+  title: React.ReactNode;
+  children?: React.ReactNode;
+  hero?: boolean;
+}) {
   return (
     <div className="text-center">
-      <h1 className={HEADING}>{title}</h1>
+      <h1 className={hero ? HERO_HEADING : HEADING}>{title}</h1>
       {children && (
         <p className="mx-auto mt-3 max-w-[440px] text-[17px] leading-[1.5] text-ink-2 text-pretty">{children}</p>
       )}
