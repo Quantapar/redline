@@ -29,4 +29,11 @@ describe('decideUnlock — runnable attack is gated on proven ownership', () => 
   it('is case-insensitive on address comparison', () => {
     expect(decideUnlock({ ...base, signerAddress: '0xOWNER' }).unlocked).toBe(true);
   });
+  it('locks when the on-chain owner reads as an empty string, not only null', () => {
+    // A failed read that returns '' (falsy but not null) must not slip through.
+    expect(decideUnlock({ ...base, onchainOwner: '' }).unlocked).toBe(false);
+  });
+  it('an empty signer never matches a real owner', () => {
+    expect(decideUnlock({ ...base, signerAddress: '' }).unlocked).toBe(false);
+  });
 });

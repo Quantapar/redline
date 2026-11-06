@@ -648,3 +648,11 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   a bug. Added the missing edge tests: empty deltas (never moved), a token gain alongside a
   native gas loss (still moved), a negative (not just zero) threshold (throws), and the
   deltaIsConsistent tolerance band (within vs just outside). +4 tests. Suite 242 green.
+
+## 2026-11-06 — ownership-gate edge coverage
+
+- Reviewed decideUnlock (the gate on the runnable exploit) — correct and fails closed on
+  every condition (invalid signature, stale/replayed challenge, unreadable owner, signer
+  mismatch), case-insensitive on addresses. Added two defensive edges: an on-chain owner
+  that reads as '' (falsy but not null) still locks, and an empty signer never matches a
+  real owner. +2 tests. Suite 244 green.
