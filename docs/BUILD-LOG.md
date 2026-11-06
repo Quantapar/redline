@@ -841,3 +841,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   any integer while rejecting malformed input. All pass — the core consensus fact holds its
   invariants, now protected against regression by properties, not just examples. +5 tests.
   Suite 277 green.
+
+## 2026-11-06 — exhaustive proof of the ownership gate
+
+- decideUnlock gates the runnable exploit on four conditions (valid signature, fresh
+  challenge, readable on-chain owner, signer matches). Enumerated all 16 input
+  combinations and proved it unlocks in EXACTLY one — all four satisfied — and every other
+  combination stays locked with a reason. A complete no-bypass proof over the gate's input
+  space, matching the council's exhaustive-combination style. With this, all four security-
+  critical functions are rigorously tested: cheatcode scanner (property/fuzz), attackerGained
+  (property ~9k), decideUnlock (exhaustive 16), tallyCouncil (256-combo + fuzz). +1 test.
+  Suite 278 green.
