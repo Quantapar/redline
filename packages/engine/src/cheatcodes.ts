@@ -21,12 +21,25 @@
  * See docs/SECURITY.md and docs/NEED-FROM-YOU.md.
  */
 
-/** Cheatcodes that grant unearned capability and are forbidden in referee runs. */
+/**
+ * Cheatcodes that grant unearned capability and are forbidden in referee runs.
+ * Three classes: value/impersonation/state (deal, prank, store, etch, …),
+ * broadcast, and SYSTEM ACCESS (ffi, filesystem, env, arbitrary bytecode).
+ * A plain-transaction referee attack has no legitimate reason to touch any of
+ * them. `vm.ffi` is the most dangerous — it runs arbitrary shell commands on the
+ * referee host, so it is both a cheat and a remote-code-execution risk in a
+ * sandbox that runs untrusted hunter tests; it must stay forbidden AND be
+ * disabled at the forge-config level (ffi = false, empty fs_permissions) when the
+ * real fork path is wired. See the SECURITY note above.
+ */
 export const FORBIDDEN_CHEATS = [
   'vm.deal', 'vm.prank', 'vm.startPrank', 'vm.stopPrank', 'vm.store', 'vm.load',
   'vm.etch', 'vm.mockCall', 'vm.mockCallRevert', 'vm.setNonce', 'vm.coinbase',
   'deal(', 'hoax(', 'startHoax(', 'vm.broadcast', 'vm.startBroadcast',
   'changePrank(', 'deployCode(',
+  // system access — RCE, filesystem, env, arbitrary bytecode
+  'vm.ffi', 'vm.readFile', 'vm.writeFile', 'vm.removeFile', 'vm.closeFile',
+  'vm.setEnv', 'vm.getCode', 'vm.getDeployedCode',
 ] as const;
 
 /** Environmental cheats that are tolerated (time/block only), listed for clarity. */

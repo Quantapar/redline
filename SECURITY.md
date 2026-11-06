@@ -30,7 +30,9 @@ Two layers enforce this:
    an address computed at runtime, or a raw assembly call). The trustworthy defense is to run the
    referee's attack as **broadcast transactions from a funded EOA** against the fork, where the
    cheatcode precompile is inert — a call to it hits empty code and does nothing, so a
-   cheat-dependent "exploit" simply fails to move money.
+   cheat-dependent "exploit" simply fails to move money. The referee's forge config must also set
+   `ffi = false` and empty `fs_permissions`, so that even if a cheat were reached, host command
+   execution and filesystem access stay off. The forge invocation already never passes `--ffi`.
 
 **Known limit (tracked):** the real fork-based referee (`FoundryRefereeEngine`) currently runs the
 attack as a `forge test`, where cheatcodes are available, and relies on layer 1 to keep them out.
