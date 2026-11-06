@@ -8,11 +8,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const channel = channelFor(id);
   const sub = subscriber();
   let hb: ReturnType<typeof setInterval> | undefined;
+  // Guards every enqueue: once the stream is closed (by 'done' or by the client
+  // disconnecting), a message still in flight from Redis must not enqueue onto the
+  // closed controller — that throws an unhandled error inside the message callback.
+  let closed = false;
+  const teardown = () => {
+    if (closed) return;
+    closed = true;
+    if (hb) clearInterval(hb);
+    void sub.quit();
+  };
 
   const stream = new ReadableStream({
     async start(controller) {
       const enc = new TextEncoder();
-      const send = (data: string) => controller.enqueue(enc.encode(`data: ${data}\n\n`));
+      const send = (data: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(enc.encode(`data: ${data}\n\n`));
+        } catch {
+          teardown();
+        }
+      };
       send(JSON.stringify({ type: 'open', scanId: id, at: new Date().toISOString() }));
 
       await sub.subscribe(channel);
@@ -20,10 +37,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         send(message);
         try {
           const ev = JSON.parse(message) as { type: string };
-          if (ev.type === 'done') {
-            if (hb) clearInterval(hb);
+          if (ev.type === 'done' && !closed) {
+            teardown();
             controller.close();
-            void sub.quit();
           }
         } catch {
           /* ignore */
@@ -32,16 +48,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
       // heartbeat so the connection is not reaped
       hb = setInterval(() => {
+        if (closed) { clearInterval(hb); return; }
         try {
           controller.enqueue(enc.encode(`: ping\n\n`));
         } catch {
-          clearInterval(hb);
+          teardown();
         }
       }, 15000);
     },
     cancel() {
-      if (hb) clearInterval(hb);
-      void sub.quit();
+      teardown();
     },
   });
 

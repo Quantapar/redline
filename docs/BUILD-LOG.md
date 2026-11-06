@@ -617,3 +617,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   tested), and the GitHub App resolves the check to **neutral** on failure (a scan that
   errored proved nothing, so it must not fail the merge, but must not hang either).
 - Suite 237 green across 10 packages.
+
+## 2026-11-06 — SSE stream: guard against enqueue-after-close
+
+- The server-side scan event stream already cleaned up its Redis subscriber on client
+  disconnect and on 'done'. But the message handler enqueued before checking for 'done',
+  so a message arriving after the controller closed (another event landing before
+  sub.quit() completes) would call controller.enqueue on a closed controller and throw
+  an unhandled error inside the callback. Added a `closed` guard + single `teardown()`
+  that every enqueue checks, so nothing is written after close and the subscriber is
+  quit exactly once. Route-level (Redis + ReadableStream), covered by typecheck + review;
+  the scan-events lib it uses is unit-tested.
