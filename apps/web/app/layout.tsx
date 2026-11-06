@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from 'next';
+import { Geist, Geist_Mono, Newsreader } from 'next/font/google';
 import './globals.css';
 import './overlay.css';
+
+// Fonts for the ported onboarding flow: Geist for UI, Newsreader (serif) for the
+// subject's own words. Exposed as CSS variables; the flow maps them under .kobra-flow.
+const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
+const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
+const newsreader = Newsreader({ variable: '--font-newsreader', subsets: ['latin'], style: ['normal', 'italic'] });
 import { AppShell } from '@/components/app-shell';
 import { DevFeedback } from '@/components/dev-feedback';
 import { issueMutationToken } from '@/lib/auth';
@@ -31,18 +38,26 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [openAlarms, session] = await Promise.all([openAlarmCount(), auth()]);
+  const session = await auth();
+  const signedIn = Boolean(session?.user);
   const user = session?.user
     ? { name: session.user.name ?? null, image: session.user.image ?? null, email: session.user.email ?? null }
     : null;
+  // The dashboard chrome (sidebar, topbar) is only for signed-in users. Signed-out
+  // visitors see the public landing page, which brings its own nav and footer.
+  const openAlarms = signedIn ? await openAlarmCount() : 0;
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <head>
         {/* Short-lived token the client attaches to state-changing requests (CSRF defence). */}
         <meta name="x-redline-csrf" content={issueMutationToken()} />
       </head>
       <body suppressHydrationWarning>
-        <AppShell openAlarms={openAlarms} user={user}>{children}</AppShell>
+        {signedIn ? (
+          <AppShell openAlarms={openAlarms} user={user}>{children}</AppShell>
+        ) : (
+          children
+        )}
         <DevFeedback />
       </body>
     </html>

@@ -1,3 +1,5 @@
+import { auth } from '@/auth';
+import { FlowRoot } from '@/components/flow/flow-root';
 import { getStats, listRecentScans, listAllFindings, listRepositories } from '@/lib/queries';
 import { RunScanButton } from '@/components/run-scan-button';
 import { Icon } from '@/components/icon';
@@ -21,7 +23,11 @@ const HUE_COLOR: Record<StatusHue, string> = {
 
 const longDate = new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' });
 
-export default async function OverviewPage() {
+export default async function HomePage() {
+  // Signed-out visitors get the public onboarding flow in place of the dashboard.
+  const session = await auth();
+  if (!session?.user) return <FlowRoot />;
+
   const [stats, scans, findings, repos] = await Promise.all([
     getStats(),
     listRecentScans(6),

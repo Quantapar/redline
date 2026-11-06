@@ -12,7 +12,9 @@ import type { NextRequest } from 'next/server';
  * and all other /api routes are skipped entirely — they enforce their own auth
  * and must never receive a 307 redirect in place of a real response.
  */
-const PUBLIC = [/^\/login(?:\/|$)/];
+// `/` is the public landing page; /login is the sign-in card. Everything else
+// requires a session.
+const PUBLIC = [/^\/$/, /^\/login(?:\/|$)/];
 
 const SESSION_COOKIES = [
   'authjs.session-token',
