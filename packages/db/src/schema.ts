@@ -158,3 +158,41 @@ export const recipes = pgTable('recipes', {
   source: text('source').notNull().default('seed'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({ recipeClassIdx: index('recipe_class_idx').on(t.weaknessClass) }));
+
+// ---- Auth.js (NextAuth) tables ----
+// Prefixed `auth_*` so they never clash with the GitHub-App `accounts` table above.
+// Shapes follow @auth/drizzle-adapter's expected schema.
+export const authUsers = pgTable('auth_user', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name'),
+  email: text('email'),
+  emailVerified: timestamp('email_verified', { withTimezone: true }),
+  image: text('image'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const authAccounts = pgTable('auth_account', {
+  userId: uuid('user_id').notNull().references(() => authUsers.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  provider: text('provider').notNull(),
+  providerAccountId: text('provider_account_id').notNull(),
+  refresh_token: text('refresh_token'),
+  access_token: text('access_token'),
+  expires_at: integer('expires_at'),
+  token_type: text('token_type'),
+  scope: text('scope'),
+  id_token: text('id_token'),
+  session_state: text('session_state'),
+}, (t) => ({ pk: primaryKey({ columns: [t.provider, t.providerAccountId] }) }));
+
+export const authSessions = pgTable('auth_session', {
+  sessionToken: text('session_token').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => authUsers.id, { onDelete: 'cascade' }),
+  expires: timestamp('expires', { withTimezone: true }).notNull(),
+});
+
+export const authVerificationTokens = pgTable('auth_verification_token', {
+  identifier: text('identifier').notNull(),
+  token: text('token').notNull(),
+  expires: timestamp('expires', { withTimezone: true }).notNull(),
+}, (t) => ({ pk: primaryKey({ columns: [t.identifier, t.token] }) }));
