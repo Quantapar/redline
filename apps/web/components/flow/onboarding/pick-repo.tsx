@@ -91,8 +91,30 @@ export function PickRepo({
   }, [repos, q, pickedId]);
   const picked = repos.find((r) => r.id === pickedId) ?? null;
 
+  // Whether Redline is already installed on the picked repo, checked as soon as
+  // it's picked: the click has to decide synchronously, or opening GitHub in a
+  // new tab gets caught by the pop-up blocker
+  const [alreadyConnected, setAlreadyConnected] = useState<Record<number, boolean>>({});
+  useEffect(() => {
+    if (pickedId == null || pickedId in alreadyConnected) return;
+    const ctrl = new AbortController();
+    fetch(`/api/onboarding/status?repo=${pickedId}`, { cache: "no-store", signal: ctrl.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { connected?: boolean } | null) => {
+        if (body) setAlreadyConnected((m) => ({ ...m, [pickedId]: Boolean(body.connected) }));
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [pickedId, alreadyConnected]);
+
   function connect() {
-    if (!picked || load.state !== "ready" || !load.installUrl || connecting) return;
+    if (!picked || load.state !== "ready" || connecting) return;
+    // Already installed on this repo: no trip to GitHub, straight to the attack
+    if (alreadyConnected[picked.id]) {
+      onConnect(picked, load.installUrl ?? "");
+      return;
+    }
+    if (!load.installUrl) return;
     // Connecting installs the Redline GitHub App on this repo; from then on its
     // pushes and pull requests are attacked, with the result as a check on GitHub.
     // GitHub opens in its own tab so this one can follow the attack live.
@@ -120,12 +142,16 @@ export function PickRepo({
             size="xl"
             type="button"
             pending={connecting}
-            disabled={!picked || load.state !== "ready" || !load.installUrl}
+            disabled={!picked || load.state !== "ready" || (!load.installUrl && !alreadyConnected[picked.id])}
             onClick={connect}
             className="flex-1"
           >
             <GithubMark className="size-4" />
-            {picked ? `Connect ${picked.name}` : "Pick a repository"}
+            {!picked
+              ? "Pick a repository"
+              : alreadyConnected[picked.id]
+                ? `Open ${picked.name}’s attack`
+                : `Connect ${picked.name}`}
           </PendingButton>
         </div>
       }
