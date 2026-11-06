@@ -60,6 +60,8 @@ export async function GET(req: Request) {
       refereeRuns: Number(counts?.refereeRuns ?? 0),
       startedAt: scan.startedAt,
       finishedAt: scan.finishedAt,
+      // Whether Redline actually posted a check run; without one, the UI must not claim it did
+      checkPosted: Boolean(scan.githubCheckRunId),
       // The check Redline posted on the commit, live on GitHub
       checkUrl: scan.githubCheckRunId
         ? `https://github.com/${repo.fullName}/runs/${scan.githubCheckRunId}`

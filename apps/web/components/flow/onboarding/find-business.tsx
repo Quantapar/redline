@@ -168,7 +168,7 @@ export function FindBusiness({ onPick }: { onPick: (account: GithubAccount) => v
     >
       <StepHeading hero title="Let’s secure your contracts">
         We’ll attack every contract on a mainnet fork and show you what provably moves.
-        Free, about 3 minutes.
+        Free to try.
       </StepHeading>
 
       <form

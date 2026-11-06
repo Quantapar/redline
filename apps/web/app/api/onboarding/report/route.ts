@@ -83,11 +83,19 @@ export async function GET(req: Request) {
   const score = reportScore(all);
   return NextResponse.json({
     repo: repo?.fullName ?? null,
-    scan: { id: scan.id, status: scan.status, commitSha: scan.commitSha, contracts: Array.isArray(scan.changedTargets) ? scan.changedTargets.length : 0 },
+    scan: {
+      id: scan.id,
+      status: scan.status,
+      commitSha: scan.commitSha,
+      contracts: Array.isArray(scan.changedTargets) ? scan.changedTargets.length : 0,
+      finishedAt: scan.finishedAt ?? scan.createdAt ?? null,
+    },
     score,
     label: scoreLabel(score),
     areas: reportAreas(candidates, all),
     fixes: fixOrder(all),
     attacks: candidates.length,
+    // Referee runs that actually executed on a fork; errors and failed builds don't count
+    replays: runs.filter((r) => r.outcome === 'moved' || r.outcome === 'did-not-move').length,
   });
 }

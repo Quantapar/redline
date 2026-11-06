@@ -23,7 +23,16 @@ type Load =
  * a visitor who isn't gets one button to connect GitHub, and the report loads
  * in place once they have.
  */
-export function ConnectedVerdict({ repo, scan }: { repo: GithubRepo; scan: ScanProgress }) {
+export function ConnectedVerdict({
+  repo,
+  scan,
+  onAnother,
+}: {
+  repo: GithubRepo;
+  scan: ScanProgress;
+  /** Back to the repository picker, to attack a different one. */
+  onAnother: () => void;
+}) {
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [connecting, setConnecting] = useState(false);
 
@@ -73,7 +82,8 @@ export function ConnectedVerdict({ repo, scan }: { repo: GithubRepo; scan: ScanP
     if (!window.open("/connect/github", "_blank")) window.location.assign("/connect/github");
   }
 
-  const checkLink = (
+  // Only point at a check Redline actually posted on the commit
+  const checkLink = scan.checkPosted ? (
     <a
       href={scan.checkUrl}
       target="_blank"
@@ -83,6 +93,12 @@ export function ConnectedVerdict({ repo, scan }: { repo: GithubRepo; scan: ScanP
       The same verdict is on GitHub as a check
       <ArrowUpRight className="size-3.5" strokeWidth={2} aria-hidden />
     </a>
+  ) : null;
+
+  const anotherButton = (
+    <Button variant="ghost" size="md" onClick={onAnother}>
+      Attack another repository
+    </Button>
   );
 
   if (load.state === "ready") {
@@ -93,6 +109,7 @@ export function ConnectedVerdict({ repo, scan }: { repo: GithubRepo; scan: ScanP
           <Button variant="secondary" size="md" nativeButton={false} render={<a href={`/scans/${scan.id}`} />}>
             Open the full report
           </Button>
+          {anotherButton}
           {checkLink}
         </div>
       </div>
@@ -126,7 +143,12 @@ export function ConnectedVerdict({ repo, scan }: { repo: GithubRepo; scan: ScanP
           </Button>
         ) : null
       }
-      note={<p className="text-center text-sm text-ink-3">{checkLink}</p>}
+      note={
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-ink-3">
+          {anotherButton}
+          {checkLink}
+        </div>
+      }
     >
       <StepHeading
         title={failed ? `The attack on ${repo.name} didn’t finish` : `${repo.name}’s report is ready`}

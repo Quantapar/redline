@@ -18,6 +18,8 @@ export type ScanProgress = {
   contracts: number;
   attacks: number;
   refereeRuns: number;
+  /** Redline posted a check run on the commit (absent from older payloads: treat as not posted). */
+  checkPosted?: boolean;
   checkUrl: string;
 };
 type Status = { connected: false } | { connected: true; fullName: string; scan: ScanProgress | null };
@@ -159,23 +161,27 @@ export function LiveAttack({
       </header>
 
       <div className="relative mt-6 flex-1 md:min-h-0">
-        <ScanBento elapsed={elapsed} finished={false} />
+        <ScanBento elapsed={elapsed} finished={false} repo={repo.fullName} />
       </div>
 
       {/* Like any review bot, the attack also runs as a check on the commit */}
       <div className="mx-auto mt-4 flex w-full max-w-[640px] shrink-0 items-center gap-3 rounded-[16px] bg-muted p-2 ps-4">
         <GithubMark className="size-4 shrink-0 text-ink-2" />
         <p className="flex-1 text-sm text-ink-2 text-pretty">
-          {scan ? (
+          {scan?.checkPosted ? (
             <>
               Live on GitHub as the <span className="text-ink">Redline</span> check on{" "}
               <span className="font-mono text-ink">{scan.commitSha.slice(0, 7)}</span>. You can close this tab.
             </>
+          ) : scan ? (
+            <>
+              Attacking commit <span className="font-mono text-ink">{scan.commitSha.slice(0, 7)}</span> on {repo.name}.
+            </>
           ) : (
-            <>Every push and pull request on {repo.name} gets a Redline check on GitHub.</>
+            <>Once connected, pushes to {repo.name} are attacked and reported as a Redline check on GitHub.</>
           )}
         </p>
-        {scan && (
+        {scan?.checkPosted && (
           <Button size="sm" variant="secondary" nativeButton={false} render={<a href={scan.checkUrl} target="_blank" rel="noreferrer" />}>
             View check
             <ArrowUpRight className="size-3.5" strokeWidth={2} aria-hidden />

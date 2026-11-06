@@ -106,7 +106,16 @@ export function OnboardingFlow() {
               }}
             />
           )}
-          {stage === "verdict" && connected && result && <ConnectedVerdict repo={connected.repo} scan={result} />}
+          {stage === "verdict" && connected && result && (
+            <ConnectedVerdict
+              repo={connected.repo}
+              scan={result}
+              onAnother={() => {
+                setResult(null);
+                go(account ? "repo" : "find");
+              }}
+            />
+          )}
         </motion.div>
       </AnimatePresence>
     </div>

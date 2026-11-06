@@ -32,12 +32,23 @@ export interface ReportArea {
   verdict: Verdict;
   /** Findings of this class (any verdict). */
   findings: number;
+  /** Of those, how many no referee managed to replay (unconfirmed, not "shaky"). */
+  unreplayed?: number;
 }
 
 /** What a finding counts as: reproduced, shaky, or nothing proven. */
 export function findingVerdict(f: Pick<ReportFinding, 'isRed' | 'consensus'>): Verdict {
   if (f.isRed) return 'red';
   return f.consensus === 'fragile' || f.consensus === 'inconclusive' ? 'warn' : 'ok';
+}
+
+/**
+ * Flagged, but no referee replayed it (every run errored or failed to build), so
+ * there is no evidence either way. Distinct from "shaky", where some referees
+ * did reproduce it, and never to be described as if referees had run.
+ */
+export function isUnreplayed(f: Pick<ReportFinding, 'isRed' | 'refereeCount'>): boolean {
+  return !f.isRed && f.refereeCount === 0;
 }
 
 // What one reproduced exploit costs the score, by severity. Unrated ones count
@@ -71,17 +82,18 @@ const RANK: Record<Verdict, number> = { red: 0, warn: 1, ok: 2 };
  */
 export function reportAreas(
   attacked: { weaknessClass: string }[],
-  findings: Pick<ReportFinding, 'weaknessClass' | 'isRed' | 'consensus'>[],
+  findings: (Pick<ReportFinding, 'weaknessClass' | 'isRed' | 'consensus'> & Partial<Pick<ReportFinding, 'refereeCount'>>)[],
 ): ReportArea[] {
   const areas = new Map<string, ReportArea>();
   for (const c of attacked) {
-    if (!areas.has(c.weaknessClass)) areas.set(c.weaknessClass, { weaknessClass: c.weaknessClass, verdict: 'ok', findings: 0 });
+    if (!areas.has(c.weaknessClass)) areas.set(c.weaknessClass, { weaknessClass: c.weaknessClass, verdict: 'ok', findings: 0, unreplayed: 0 });
   }
   for (const f of findings) {
-    const a = areas.get(f.weaknessClass) ?? { weaknessClass: f.weaknessClass, verdict: 'ok' as Verdict, findings: 0 };
+    const a = areas.get(f.weaknessClass) ?? { weaknessClass: f.weaknessClass, verdict: 'ok' as Verdict, findings: 0, unreplayed: 0 };
     const v = findingVerdict(f);
     if (RANK[v] < RANK[a.verdict]) a.verdict = v;
     a.findings += 1;
+    if (f.refereeCount !== undefined && isUnreplayed({ isRed: f.isRed, refereeCount: f.refereeCount })) a.unreplayed = (a.unreplayed ?? 0) + 1;
     areas.set(f.weaknessClass, a);
   }
   return [...areas.values()].sort((x, y) => RANK[x.verdict] - RANK[y.verdict] || x.weaknessClass.localeCompare(y.weaknessClass));
@@ -107,7 +119,9 @@ export function agentPrompt(repo: string, f: ReportFinding): string {
   const where = [f.targetContract, f.targetFunction && `${f.targetFunction}()`].filter(Boolean).join('.');
   const proof = f.isRed
     ? `Redline reproduced it on a mainnet fork: ${f.agreementCount} of ${f.refereeCount} independent referees moved funds.`
-    : `Redline flagged it, but only ${f.agreementCount} of ${f.refereeCount} referees reproduced it, so treat it as likely rather than proven.`;
+    : isUnreplayed(f)
+      ? 'Redline flagged it, but no referee could replay it on a fork, so it is unconfirmed: check it before treating it as real.'
+      : `Redline flagged it, but only ${f.agreementCount} of ${f.refereeCount} referees reproduced it, so treat it as likely rather than proven.`;
   return [
     `Fix this security issue in ${repo}${where ? `, in ${where}` : ''}.`,
     '',

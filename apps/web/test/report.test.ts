@@ -80,6 +80,12 @@ describe('agentPrompt', () => {
     expect(p).toContain('function testExploit() public {}');
     expect(p).toContain('```diff\n- a\n+ b\n```');
   });
+  it('calls a finding no referee replayed unconfirmed, not partly reproduced', () => {
+    const p = agentPrompt('acme/vault', f({ isRed: false, consensus: 'inconclusive', agreementCount: 0, refereeCount: 0 }));
+    expect(p).toContain('no referee could replay it on a fork');
+    expect(p).not.toContain('0 of 0');
+  });
+
   it('says when a finding is not proven', () => {
     expect(agentPrompt('acme/vault', f({ isRed: false, consensus: 'fragile', agreementCount: 2 }))).toContain('likely rather than proven');
   });

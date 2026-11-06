@@ -12,7 +12,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Lock } from "lucide-react";
-import { business, steps, websiteLines } from "@/lib/flow/fleet";
+import { steps, websiteLines } from "@/lib/flow/fleet";
 import { BusinessMark } from "@/components/flow/brand";
 import { GoogleAdsLogo, GoogleLogo, GoogleMapsLogo, InstagramLogo, MetaLogo } from "@/components/flow/logos";
 import { cn } from "@/lib/flow/utils";
@@ -26,7 +26,10 @@ const SCORE = 51;
 // it's borrowed from: the scan's clock, wrapped to the card's cycle
 const loop = (elapsed: number, period: number) => elapsed % period;
 
-export function ScanBento({ elapsed, finished }: { elapsed: number; finished: boolean }) {
+// These cards illustrate HOW the attack works while it runs. They never state a
+// result (an amount, a block, a referee count): the scan's real numbers live in
+// the line above the bento and in the report.
+export function ScanBento({ elapsed, finished, repo }: { elapsed: number; finished: boolean; repo?: string }) {
   return (
     // Two columns of two, in the order the scan runs them
     <div data-component="ScanBento" className="mx-auto grid h-full w-full max-w-[760px] grid-cols-1 gap-4 max-md:auto-rows-[340px] md:grid-flow-col md:grid-cols-2 md:grid-rows-2">
@@ -35,10 +38,10 @@ export function ScanBento({ elapsed, finished }: { elapsed: number; finished: bo
       </BentoCard>
 
       <BentoCard title="Reading the Solidity" copy="Every external call and state write" size={{ w: PAGE.w, h: PAGE.h }}>
-        <Magnifier elapsed={elapsed} />
+        <Magnifier elapsed={elapsed} repo={repo} />
       </BentoCard>
 
-      <BentoCard title="Refereeing the attacks" copy="Five models replay each exploit" size={{ w: 434, h: 236 }}>
+      <BentoCard title="Refereeing the attacks" copy="Each exploit replayed on separate forks" size={{ w: 434, h: 236 }}>
         <Performance finished={finished} />
       </BentoCard>
 
@@ -121,7 +124,7 @@ const STOPS = [
   { at: step("website").end, x: 196, y: 140 },
 ];
 
-function Magnifier({ elapsed }: { elapsed: number }) {
+function Magnifier({ elapsed, repo }: { elapsed: number; repo?: string }) {
   const reduce = useReducedMotion();
   // Read the page top to bottom, glide back, and read it again
   const first = STOPS[1].at;
@@ -133,7 +136,7 @@ function Magnifier({ elapsed }: { elapsed: number }) {
   return (
     <div className="relative" style={{ width: PAGE.w, height: PAGE.h }}>
       <div className="absolute inset-0 overflow-hidden rounded-[20px] bg-card shadow-[0_0_0_1px_rgb(255_255_255/0.08),0_12px_24px_-6px_rgb(0_0_0/0.5)]">
-        <MiniSite />
+        <MiniSite repo={repo} />
       </div>
 
       {/* The lens: a magnified copy of the page, clipped to a circle, sliding with it */}
@@ -153,7 +156,7 @@ function Magnifier({ elapsed }: { elapsed: number }) {
             transition={glide}
             style={{ width: PAGE.w, height: PAGE.h, scale: ZOOM }}
           >
-            <MiniSite />
+            <MiniSite repo={repo} />
           </motion.div>
           <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_25%,rgb(255_255_255/0.12),transparent_45%)]" />
         </div>
@@ -162,36 +165,34 @@ function Magnifier({ elapsed }: { elapsed: number }) {
   );
 }
 
-function MiniSite() {
+// A placeholder line of source: the shape of code, never invented code
+const Bar = ({ w, tone = "bg-white/[0.08]", h = "h-2" }: { w: string; tone?: string; h?: string }) => (
+  <span className={cn("block rounded-full", h, tone)} style={{ width: w }} />
+);
+
+function MiniSite({ repo }: { repo?: string }) {
   return (
     <div className="relative size-full bg-card">
       <div className="flex h-7 items-center gap-1.5 px-3 shadow-[inset_0_-1px_0_rgb(255_255_255/0.06)]">
         <span className="size-2 rounded-full bg-white/15" />
         <span className="size-2 rounded-full bg-white/15" />
         <span className="size-2 rounded-full bg-white/15" />
-        <span className="ml-3 flex-1 rounded bg-white/[0.05] py-0.5 text-center font-mono text-[9px] text-ink-3">{business.website}</span>
+        <span className="ml-3 flex-1 truncate rounded bg-white/[0.05] px-2 py-0.5 text-center font-mono text-[9px] text-ink-3">
+          {repo ? `github.com/${repo}` : "github.com"}
+        </span>
       </div>
-      <p className="bg-secondary py-1.5 text-center text-[8px] font-semibold tracking-[0.08em] text-ink uppercase">
-        Pull request #42 changes withdraw()
-      </p>
-      <div className="px-6 pt-4">
-        <span className="inline-flex h-[29px] w-[44px] items-center justify-center rounded bg-secondary font-mono text-[10px] font-semibold text-ink outline-none">{"</>"}</span>
-        <p className="mt-2.5 font-serif text-[21px] leading-[1.12] text-ink">
-          contract VaultCore is ReentrancyGuard
-        </p>
-        <p className="mt-2 font-serif text-[11px] leading-snug text-ink-2">
-          function withdraw(uint256 amount) external
-        </p>
-        <p className="mt-3 inline-block rounded bg-ink px-2 py-1 text-[7px] font-semibold tracking-[0.08em] text-paper uppercase">
-          External call before state write
-        </p>
-        <div className="mt-3.5 grid grid-cols-2 gap-3 text-[8px] leading-snug text-ink-2">
-          <p>
-            <span className="font-medium text-ink">msg.sender.call</span>, sends the balance
-          </p>
-          <p>
-            <span className="font-medium text-ink">balances = 0</span>, only after the call
-          </p>
+      <div className="flex h-[27px] items-center justify-center bg-secondary">
+        <Bar w="46%" h="h-1.5" tone="bg-white/[0.12]" />
+      </div>
+      <div className="space-y-2.5 px-6 pt-4">
+        <span className="inline-flex h-[29px] w-[44px] items-center justify-center rounded bg-secondary font-mono text-[10px] font-semibold text-ink">{"</>"}</span>
+        <Bar w="72%" h="h-4" tone="bg-white/[0.12]" />
+        <Bar w="58%" h="h-4" tone="bg-white/[0.12]" />
+        <Bar w="64%" />
+        <Bar w="34%" h="h-3" tone="bg-white/[0.16]" />
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <Bar w="80%" />
+          <Bar w="70%" />
         </div>
       </div>
     </div>
@@ -268,7 +269,9 @@ function Distribution({ elapsed }: { elapsed: number }) {
 // way theirs does, and the higher it reads, the harder the whole scene shakes.
 // Once the scan finishes it settles on the score.
 
-const READINGS = ["8.5 ETH", "reentrancy", "4 calls", "flash loan", "withdraw()", "21,394,112", "oracle drift", "0 approvals", "5 of 5", "slippage", "3 paths", "+12.4 ETH"];
+// What a referee touches on the fork: EVM operations and common calls, never a
+// result (no amounts, blocks or counts), since these drift by while it runs
+const READINGS = ["CALL", "SSTORE", "SLOAD", "DELEGATECALL", "balanceOf()", "transfer()", "flashLoan()", "swap()", "getReserves()", "latestRoundData()", "withdraw()", "approve()"];
 // The dial reads 0–120 over 225°, starting at -113° (ToDesktop's numbers)
 const DIAL_MAX = 120;
 const dialAngle = (v: number) => -113 + (v / DIAL_MAX) * 225;
@@ -396,10 +399,8 @@ function Performance({ finished }: { finished: boolean }) {
                 <div className="b2-meter-inner-arc absolute inset-7 rounded-full" />
               </div>
             ))}
+            {/* No number on the dial: the needle only shows activity, and a figure here would read as a score */}
             <div className="b2-meter-hub absolute inset-12 rounded-full" />
-            <div className="b2-meter-reading absolute bottom-6 left-1/2 -translate-x-1/2 text-[13px] font-semibold tracking-[-0.02em] tabular-nums">
-              {Math.min(100, Math.round(finished ? SCORE : shown))}
-            </div>
           </div>
           {/* The shade trails the needle; it's drawn with the needle at 12 o'clock and turns with it */}
           <div className="b2-meter-shade absolute top-3.5 left-3.5 z-10 size-32">
@@ -478,10 +479,11 @@ const SETTLE = { type: "spring" as const, duration: 0.5, bounce: 0 };
 // Each finding has a turn on the lock screen, then the next drops in, on a loop
 const NOTE_EVERY = 2_400;
 const NOTES = [
-  { app: "Repository", Logo: GoogleLogo, title: "VaultCore.sol", body: "withdraw() calls before zeroing" },
-  { app: "Foundry", Logo: InstagramLogo, title: "withdraw() exploit", body: "Re-enters and drains the vault" },
-  { app: "Chain state", Logo: MetaLogo, title: "Fork @ 21,384,221", body: "125.5 ETH left the vault" },
-  { app: "Council", Logo: GoogleAdsLogo, title: "5 of 5 referees", body: "The theft reproduced" },
+  // The steps every attack goes through, not results: nothing here claims what was found
+  { app: "Repository", Logo: GoogleLogo, title: "Reading the contracts", body: "Every external call and state write" },
+  { app: "Foundry", Logo: InstagramLogo, title: "Drafting exploits", body: "Each one a runnable Foundry test" },
+  { app: "Chain state", Logo: MetaLogo, title: "Replaying on a fork", body: "Balances read before and after" },
+  { app: "Council", Logo: GoogleAdsLogo, title: "Referees compare", body: "Only agreed theft counts as proven" },
 ];
 const HOME = [
   { app: "Repo", Logo: GoogleLogo },

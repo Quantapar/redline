@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Calculator, Check, Copy, Gauge, KeyRound, RefreshCcw, ShieldAlert, Zap, type LucideIcon } from "lucide-react";
 import { EASE_OUT as ease } from "@/lib/flow/motion";
-import { formatEth, WEAKNESS_LABEL } from "@/lib/format";
-import { agentPrompt, findingVerdict, type ReportArea, type ReportFinding, type Verdict } from "@/lib/report";
+import { formatEth, timeAgo, WEAKNESS_LABEL } from "@/lib/format";
+import { agentPrompt, findingVerdict, isUnreplayed, type ReportArea, type ReportFinding, type Verdict } from "@/lib/report";
 import { Badge } from "@/components/flow/ui/badge";
 import { Button } from "@/components/flow/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/flow/ui/card";
@@ -15,13 +15,39 @@ import { cn } from "@/lib/flow/utils";
 /** What /api/onboarding/report returns. */
 export type Report = {
   repo: string | null;
-  scan: { id: string; status: string; commitSha: string; contracts: number };
+  scan: { id: string; status: string; commitSha: string; contracts: number; finishedAt?: string | null };
   score: number;
   label: string;
   areas: ReportArea[];
   fixes: ReportFinding[];
   attacks: number;
+  /** Referee runs that actually executed on a fork. Absent from older payloads. */
+  replays?: number;
 };
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * The line under the headline when nothing was proven, stating only what the
+ * scan recorded: how much was attacked, whether anything really ran on a fork,
+ * and what is left unresolved below.
+ */
+function summaryLine(report: Report): string {
+  const contracts = plural(report.scan.contracts, "contract");
+  if (report.attacks === 0) return `No exploit was drafted against ${contracts}, so there was nothing to replay.`;
+  const replayed = report.replays === undefined || report.replays > 0;
+  const lead = replayed
+    ? `We attacked ${contracts} with ${plural(report.attacks, "exploit")} and replayed them on a mainnet fork.`
+    : `We drafted ${plural(report.attacks, "exploit")} against ${contracts}, but none could be replayed on a fork.`;
+  const unconfirmed = report.fixes.filter(isUnreplayed).length;
+  const shaky = report.fixes.length - unconfirmed;
+  const open = [
+    shaky && `${plural(shaky, "finding")} only partly reproduced`,
+    unconfirmed && `${plural(unconfirmed, "finding")} still unconfirmed`,
+  ].filter(Boolean);
+  if (open.length) return `${lead} ${open.join(" and ")}; ${report.fixes.length === 1 ? "it’s" : "they’re"} below.`;
+  return replayed ? `${lead} None of them took anything.` : lead;
+}
 
 const TILE = "gap-0 rounded-[24px] bg-white/[0.03] py-0 shadow-none ring-0";
 const TILE_PANEL = "flex-1 rounded-[16px] bg-card shadow-[0_0_0_1px_var(--border),0_1px_2px_rgb(0_0_0/0.3)]";
@@ -42,7 +68,11 @@ const VERDICT_BADGE: Record<Verdict, { label: string; variant: "destructive" | "
 
 function areaDetail(a: ReportArea): string {
   if (a.verdict === "red") return a.findings === 1 ? "an exploit moved funds" : `${a.findings} exploits moved funds`;
-  if (a.verdict === "warn") return "some referees reproduced it, not all";
+  if (a.verdict === "warn") {
+    return a.unreplayed && a.unreplayed === a.findings
+      ? "flagged, but no referee could replay it yet"
+      : "some referees reproduced it, not all";
+  }
   return "attacked, nothing moved";
 }
 
@@ -134,12 +164,21 @@ export function ReportView({ report, repoName }: { report: Report; repoName: str
           {...rise(0.08)}
           className="max-w-[900px] text-[32px] leading-[1.08] font-medium tracking-[-0.03em] text-ink text-balance sm:text-[52px]"
         >
-          {top?.isRed ? top.title : `No exploit moved money in ${repoName}.`}
+          {top?.isRed
+            ? top.title
+            : report.replays === 0
+              ? `Nothing was proven in ${repoName} yet.`
+              : `No exploit moved money in ${repoName}.`}
         </motion.h1>
         <motion.p {...rise(0.16)} className="mt-5 max-w-[900px] text-lg leading-relaxed text-ink-2 text-balance">
           {top?.isRed
             ? `${top.plainSentence}${top.movedWei !== "0" ? ` ${formatEth(top.movedWei)} moved, and` : ""} ${top.agreementCount} of ${top.refereeCount} referees reproduced it on a mainnet fork.`
-            : `We attacked ${report.scan.contracts} ${report.scan.contracts === 1 ? "contract" : "contracts"} with ${report.attacks} ${report.attacks === 1 ? "exploit" : "exploits"}, each replayed on a mainnet fork. ${report.fixes.length ? "A few were shaky; they're below." : "None of them took anything."}`}
+            : summaryLine(report)}
+        </motion.p>
+        {/* When this attack ran: an older scan must never read as one that just happened */}
+        <motion.p {...rise(0.2)} className="mt-3 text-sm text-ink-3">
+          From the attack on commit <span className="font-mono">{report.scan.commitSha.slice(0, 7)}</span>
+          {report.scan.finishedAt ? `, ${timeAgo(report.scan.finishedAt)}` : ""}.
         </motion.p>
       </header>
 
@@ -215,6 +254,7 @@ const STEP_NUMBER =
 function FixCard({ index, finding: f, repo }: { index: number; finding: ReportFinding; repo: string }) {
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const verdict = findingVerdict(f);
+  const unreplayed = isUnreplayed(f);
 
   async function copy() {
     try {
@@ -243,10 +283,10 @@ function FixCard({ index, finding: f, repo }: { index: number; finding: ReportFi
               </span>
             )}
             <span>
-              {f.agreementCount} of {f.refereeCount} referees
+              {unreplayed ? "No referee could replay it" : `${f.agreementCount} of ${f.refereeCount} referees`}
             </span>
-            <Badge size="sm" variant={verdict === "red" ? "destructive" : "amber"}>
-              {verdict === "red" ? "Proven" : "Likely"}
+            <Badge size="sm" variant={verdict === "red" ? "destructive" : unreplayed ? "neutral" : "amber"}>
+              {verdict === "red" ? "Proven" : unreplayed ? "Unconfirmed" : "Likely"}
             </Badge>
           </p>
           <div className="mt-5">
