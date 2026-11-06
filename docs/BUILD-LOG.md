@@ -724,3 +724,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   exit code (Slither/Aderyn exit non-zero when they find issues) still parses the output.
   Added an optional bin param so the not-installed path is deterministically tested. +1 test.
 - Suite 250 green across 10 packages.
+
+## 2026-11-06 — startFork: no uncaught crash when anvil is missing
+
+- startFork spawned anvil with no 'error' listener. A ChildProcess that emits 'error'
+  with no listener throws an UNCAUGHT exception that crashes the process — and anvil not
+  being installed (spawn ENOENT) is exactly that case. (Latent: startFork isn't wired into
+  the pipeline yet, but it's exported and will be when the real fork path lands.) Added an
+  error listener; it now throws a clear "anvil failed to start" instead of crashing, kills
+  a half-started anvil on readiness timeout so it doesn't leak, and takes a bin override so
+  the failure path is deterministically tested. +1 test. Suite 251 green.

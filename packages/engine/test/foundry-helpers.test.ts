@@ -37,3 +37,15 @@ describe('wrapTest', () => {
     expect(wrapped).toContain('target.drain()');
   });
 });
+
+import { startFork } from '../src/foundry.js';
+
+describe('startFork fails gracefully when anvil cannot spawn', () => {
+  it('throws a clear error instead of crashing on an uncaught spawn error', async () => {
+    // A non-existent binary makes spawn emit ENOENT; without the error listener this
+    // would be an uncaught exception that crashes the process.
+    await expect(
+      startFork({ forkUrl: 'http://127.0.0.1:1', bin: 'anvil-not-installed-xyz', port: 18599 }),
+    ).rejects.toThrow(/anvil failed to start/);
+  });
+});

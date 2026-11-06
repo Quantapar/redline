@@ -39,19 +39,28 @@ export async function startFork(opts: {
   block?: number;
   port?: number;
   mnemonic?: string;
+  /** anvil binary name; overridable for tests */
+  bin?: string;
 }): Promise<ForkHandle> {
   const port = opts.port ?? 8545 + Math.floor(Math.random() * 1000);
   const args = ['--fork-url', opts.forkUrl, '--port', String(port), '--silent'];
   if (opts.block) args.push('--fork-block-number', String(opts.block));
   if (opts.mnemonic) args.push('--mnemonic', opts.mnemonic);
 
-  const child: ChildProcess = spawn('anvil', args, { stdio: 'ignore' });
+  const child: ChildProcess = spawn(opts.bin ?? 'anvil', args, { stdio: 'ignore' });
+  // A ChildProcess that emits 'error' with no listener throws an uncaught exception
+  // that crashes the process. anvil not being installed (spawn ENOENT) is exactly
+  // that case, so capture it and fail gracefully instead.
+  const spawnState: { error: Error | null } = { error: null };
+  child.once('error', (err) => { spawnState.error = err; });
   const rpcUrl = `http://127.0.0.1:${port}`;
 
   // Wait until the fork responds to eth_blockNumber.
   const deadline = Date.now() + 30_000;
   let block = opts.block ?? 0;
+  let ready = false;
   while (Date.now() < deadline) {
+    if (spawnState.error) break; // anvil could not start (e.g., not installed)
     try {
       const res = await fetch(rpcUrl, {
         method: 'POST',
@@ -61,11 +70,21 @@ export async function startFork(opts: {
       const json = (await res.json()) as { result?: string };
       if (json.result) {
         block = parseInt(json.result, 16);
+        ready = true;
         break;
       }
     } catch {
       await new Promise((r) => setTimeout(r, 300));
     }
+  }
+
+  if (spawnState.error) {
+    throw new Error(`anvil failed to start: ${spawnState.error.message}`);
+  }
+  if (!ready) {
+    // Partially started but never answered — kill it so we don't leak the process.
+    child.kill('SIGTERM');
+    throw new Error(`anvil fork did not become ready within 30s on port ${port}`);
   }
 
   return {
