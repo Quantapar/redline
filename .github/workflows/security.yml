@@ -1,0 +1,59 @@
+# Supply-chain and secret checks, visible as checks on every push and pull request.
+# Three independent gates:
+#   - secret-scan: gitleaks over the full history and the diff, so a committed key
+#     fails the build (the repo is public — every push is published).
+#   - dependency-review: on PRs, blocks a change that pulls in a vulnerable or
+#     disallowed-license dependency before it merges.
+#   - audit: pnpm's own advisory check across the workspace.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so a secret in any past commit is caught
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          # Copyleft licenses would force us to open-source consumers of the SDK;
+          # flag them for a human instead of silently accepting.
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+
+  audit:
+    name: Dependency audit (pnpm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Reported, not blocking: a transitive advisory with no upstream fix must not
+      # wedge every unrelated PR (this mirrors a review check that informs rather
+      # than gates). New vulnerable DIRECT dependencies are blocked on PRs by the
+      # dependency-review job above; this surfaces the standing advisory list.
+      - name: Audit (report high and critical)
+        run: pnpm audit --audit-level high --prod || true

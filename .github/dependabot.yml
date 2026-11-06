@@ -1,0 +1,25 @@
+# Keep dependencies and the CI actions themselves patched. Grouped so a week's
+# security and minor updates arrive as one reviewable PR per ecosystem rather than
+# a storm of single-package bumps.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
