@@ -468,3 +468,18 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   key keeps the documented dev plaintext fallback. The AES-256-GCM mechanics were
   otherwise sound (fresh random IV, auth tag set before final, correct offsets).
 - Suite: 216 green across 10 packages.
+
+## 2026-11-06 — audit: budget guard, model-output bounds, redaction
+
+- **Budget guard + swarm: audited, sound.** Every paid call reserves its estimate
+  before spending and no new call is made once the cap is hit; over-reservation is
+  not refunded, erring toward underspend. No overrun hole. No change needed.
+- **Bounded untrusted model output.** parseCandidates validated most fields (zod
+  weakness class, regex claimedValueWei, 500-char summary) but left forgeTest and
+  targetFunction unbounded and the candidate count uncapped. Since the forgeTest is
+  stored and later compiled, a compromised/errant model could inject an oversized
+  payload. Capped: 10 candidates, 24KB forgeTest, 120-char targetFunction.
+- **Redaction / ownership gate: audited, clean.** The decrypted attack is used only
+  in the finding server component, redacted before the client boundary; no API route
+  returns it and no reveal endpoint exists, so the runnable attack never leaves the
+  server. SECURITY.md's promise holds. No change needed.

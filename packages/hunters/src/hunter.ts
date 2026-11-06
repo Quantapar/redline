@@ -28,6 +28,14 @@ function newId(): string {
   return `cand_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 }
 
+// Bounds on UNTRUSTED model output. Model responses flow into storage and the
+// forgeTest is later compiled/run, so a compromised or errant model must not be
+// able to inject an oversized payload. A real Foundry PoC is a few KB; these caps
+// are generous for legitimate output and cut off abuse.
+const MAX_CANDIDATES = 10;
+const MAX_FORGE_TEST_CHARS = 24_000;
+const MAX_TARGET_FUNCTION_CHARS = 120;
+
 /** Parse a model response into validated Candidates. Invalid entries are dropped. */
 export function parseCandidates(
   resp: ChatResponse,
@@ -35,7 +43,7 @@ export function parseCandidates(
   targetContract: string,
 ): Candidate[] {
   const parsed = extractJson(resp.content) as { candidates?: RawCandidate[] } | null;
-  const list = parsed?.candidates ?? [];
+  const list = Array.isArray(parsed?.candidates) ? parsed!.candidates.slice(0, MAX_CANDIDATES) : [];
   const out: Candidate[] = [];
   for (const r of list) {
     if (!r.forgeTest || !r.summary) continue;
@@ -47,9 +55,9 @@ export function parseCandidates(
       modelReceipt: resp.receipt,
       weaknessClass: wc.success ? wc.data : 'other',
       targetContract,
-      targetFunction: r.targetFunction ?? null,
+      targetFunction: r.targetFunction ? String(r.targetFunction).slice(0, MAX_TARGET_FUNCTION_CHARS) : null,
       summary: String(r.summary).slice(0, 500),
-      forgeTest: String(r.forgeTest),
+      forgeTest: String(r.forgeTest).slice(0, MAX_FORGE_TEST_CHARS),
       steps: [],
       claimedValueWei: /^\d+$/.test(String(r.claimedValueWei)) ? String(r.claimedValueWei) : '0',
       usedShortcuts: Boolean(r.usedShortcuts),

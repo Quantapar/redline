@@ -36,6 +36,18 @@ describe('candidate parsing', () => {
     const r = resp(JSON.stringify({ candidates: [{ summary: 'x', forgeTest: 'f', claimedValueWei: 'lots' }] }));
     expect(parseCandidates(r, 's1', 'V')[0]!.claimedValueWei).toBe('0');
   });
+  it('bounds untrusted model output (forgeTest, targetFunction, candidate count)', () => {
+    const huge = 'A'.repeat(100_000);
+    const many = Array.from({ length: 50 }, () => ({ summary: 'x', forgeTest: 'f' }));
+    const r = resp(JSON.stringify({ candidates: [
+      { summary: 'x', forgeTest: huge, targetFunction: huge },
+      ...many,
+    ] }));
+    const cands = parseCandidates(r, 's1', 'V');
+    expect(cands.length).toBeLessThanOrEqual(10);        // candidate count capped
+    expect(cands[0]!.forgeTest.length).toBeLessThanOrEqual(24_000); // oversized payload cut
+    expect(cands[0]!.targetFunction!.length).toBeLessThanOrEqual(120);
+  });
   it('estimates cost from usage with a floor', () => {
     expect(estimateCostCents(resp('{}'), 5)).toBeGreaterThanOrEqual(1);
   });
