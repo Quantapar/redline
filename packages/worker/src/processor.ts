@@ -1,11 +1,23 @@
 import { Worker } from 'bullmq';
-import { createDb } from '@redline/db';
+import { createDb, setScanStatus } from '@redline/db';
 import { createRefereeEngine } from '@redline/engine';
 import { OGRouterClient } from '@redline/hunters';
 import { createRedis } from './connection.js';
 import { SCAN_QUEUE, type ScanJobData } from './queue.js';
 import { runScan, type PipelineDeps } from './pipeline.js';
 import { gitPrepare } from './prepare.js';
+
+/**
+ * Mark a scan failed after its job errored, so the dashboard and the live scan view
+ * (whose poll treats 'failed' as terminal) stop waiting on it. A no-op if the scan
+ * row is gone. Separated out so the error path is unit-testable without BullMQ.
+ */
+export async function markScanFailed(
+  db: ReturnType<typeof createDb>['db'],
+  scanId: string,
+): Promise<void> {
+  await setScanStatus(db, scanId, 'failed', { finishedAt: new Date() });
+}
 
 /**
  * The scan worker. Pulls scan jobs off the queue and runs the pipeline. In a
@@ -32,8 +44,20 @@ export function startWorker(overrides: Partial<PipelineDeps> = {}): Worker<ScanJ
     { connection: createRedis(), concurrency: Number(process.env.SCAN_CONCURRENCY ?? 2) },
   );
 
-  worker.on('failed', (job, err) => {
+  worker.on('failed', async (job, err) => {
     console.error(`[worker] scan ${job?.data.scanId} failed:`, err.message);
+    // Mark the scan failed so the dashboard and the live scan view stop waiting on
+    // it (the live feed's poll treats 'failed' as terminal). This runs only when the
+    // job actually threw; a cancelled scan returns normally and completes the job, so
+    // it reaches the 'completed' path and never clobbers its 'cancelled' state here.
+    const scanId = job?.data.scanId;
+    if (scanId) {
+      try {
+        await markScanFailed(overrides.db ?? db, scanId);
+      } catch (e) {
+        console.error(`[worker] could not mark scan ${scanId} failed:`, (e as Error).message);
+      }
+    }
   });
   return worker;
 }

@@ -61,6 +61,33 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
       app.log.error(`[redline] failed to resolve check: ${String(err)}`);
     }
   });
+
+  // A scan job that errors fires 'failed', not 'completed'. Without this, the check
+  // created as in_progress would hang forever and (under branch protection) block the
+  // PR over an infrastructure hiccup. Resolve it to neutral: a scan that errored
+  // proved nothing, so it must not fail the merge, but it must not hang either.
+  events.on('failed', async ({ jobId }: { jobId: string }) => {
+    try {
+      const job = await queue.getJob(jobId);
+      const scanId = job?.data.scanId as string | undefined;
+      if (!scanId) return;
+      const ctx = await getScanCompletionContext(db, scanId);
+      if (!ctx || !ctx.checkRunId || ctx.installationId == null) return;
+      const [owner, repo] = ctx.repoFullName.split('/');
+      const octokit = await app.auth(ctx.installationId);
+      await octokit.checks.update({
+        owner: owner!, repo: repo!, check_run_id: ctx.checkRunId,
+        status: 'completed', conclusion: 'neutral', completed_at: new Date().toISOString(),
+        output: {
+          title: 'Redline scan could not complete',
+          summary: 'The scan errored before reaching a verdict. This does not block the merge; re-run the scan to try again.',
+        },
+      });
+      app.log.info(`[redline] resolved check ${ctx.checkRunId} as neutral (scan ${scanId} failed)`);
+    } catch (err) {
+      app.log.error(`[redline] failed to resolve a failed scan's check: ${String(err)}`);
+    }
+  });
   }
 
   async function upsertRepo(meta: RepoMeta, installationId: number): Promise<string> {

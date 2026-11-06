@@ -605,3 +605,15 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   Retry-After (delta-seconds or HTTP-date) and uses it, capped at 20s so a hostile or
   mistaken value cannot stall a budget-capped scan; falls back to exponential backoff
   when the header is absent (so existing behavior is unchanged). +4 tests. Suite 235 green.
+
+## 2026-11-06 — resolve the scan-failure path (worker + GitHub check)
+
+- A scan job that errors fired BullMQ's 'failed' event, but nothing acted on it:
+  - The worker only logged it, never marking the scan 'failed'. So the dashboard and
+    the live scan view (whose poll treats 'failed' as terminal) would wait forever.
+  - The GitHub App had no 'failed' listener, so the check created as in_progress would
+    hang indefinitely and, under branch protection, block the PR over an infra hiccup.
+- Fixed both: the worker now marks the scan 'failed' (extracted markScanFailed, unit
+  tested), and the GitHub App resolves the check to **neutral** on failure (a scan that
+  errored proved nothing, so it must not fail the merge, but must not hang either).
+- Suite 237 green across 10 packages.
