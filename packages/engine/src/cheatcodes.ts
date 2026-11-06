@@ -4,6 +4,21 @@
  * money, impersonating other accounts, or rewriting chain state — must not
  * exist in the referee's room. This module detects them, tolerant of whitespace
  * and comments so an attack cannot hide a cheat as `vm . deal(` or behind `/* *\/`.
+ *
+ * SECURITY — scope and limits of this detector (read before trusting it):
+ * This is a SOURCE-TEXT scanner. It catches the common and the obvious — the
+ * inherited `vm`/`hevm` handle, bare forge-std helpers, aliasing the `Vm`
+ * interface, and any reference to the cheatcode precompile address. It CANNOT
+ * be the sole guarantee: a sufficiently determined hunter can still reach the
+ * cheatcode precompile through means that leave no literal token (e.g. computing
+ * the precompile address arithmetically, or a raw assembly call built from
+ * runtime values). Treat this module as DEFENSE IN DEPTH only. The real
+ * two-room guarantee must come from EXECUTION-LEVEL isolation: the referee runs
+ * the attack as broadcast transactions from a funded EOA against the fork, where
+ * the cheatcode precompile is inert (a call to 0x7109… hits empty code and does
+ * nothing), so a cheat-dependent "exploit" simply fails to move money. Until the
+ * Foundry path runs attacks that way, a red verdict from it is NOT fully trusted.
+ * See docs/SECURITY.md and docs/NEED-FROM-YOU.md.
  */
 
 /** Cheatcodes that grant unearned capability and are forbidden in referee runs. */
@@ -11,23 +26,41 @@ export const FORBIDDEN_CHEATS = [
   'vm.deal', 'vm.prank', 'vm.startPrank', 'vm.stopPrank', 'vm.store', 'vm.load',
   'vm.etch', 'vm.mockCall', 'vm.mockCallRevert', 'vm.setNonce', 'vm.coinbase',
   'deal(', 'hoax(', 'startHoax(', 'vm.broadcast', 'vm.startBroadcast',
+  'changePrank(', 'deployCode(',
 ] as const;
 
 /** Environmental cheats that are tolerated (time/block only), listed for clarity. */
 export const TOLERATED_CHEATS = ['vm.warp', 'vm.roll', 'vm.fee', 'vm.chainId'] as const;
 
+/**
+ * Structural signals that grant the WHOLE cheatcode API regardless of method
+ * name, so they are forbidden wholesale — this is what defeats handle-aliasing
+ * (`Vm V = Vm(0x7109…); V.deal(…)`) and raw precompile calls that never spell
+ * out a cheat name. The canonical forge cheatcode precompile address is the one
+ * invariant every cheat route shares.
+ */
+const VM_ACCESS_RES: { cheat: string; re: RegExp }[] = [
+  // Any reference to the cheatcode precompile address (case-insensitive), however
+  // the call is then made (aliased handle, abi.encodeWithSelector, assembly).
+  { cheat: 'cheatcode-precompile-address', re: /0x7109709ecfa91a80626ff3989d68f67f5b1dd12d/i },
+  // Casting to the Vm / IVm / Hevm cheat interface grabs the full API under any name.
+  { cheat: 'vm-interface-cast', re: /\b(?:I?Vm|Hevm)\s*\(/ },
+  // Declaring a local of the cheat-interface type (incl. copying the inherited handle).
+  { cheat: 'vm-handle-alias', re: /\b(?:I?Vm|Hevm)\s+[A-Za-z_]\w*\s*=/ },
+];
+
 // Build a whitespace-tolerant matcher for each cheat token.
 function toRegex(token: string): RegExp {
   if (token.endsWith('(')) {
-    // bare helper like deal( / hoax( / startHoax(
+    // bare helper like deal( / hoax( / startHoax( / changePrank( / deployCode(
     const name = token.slice(0, -1);
     return new RegExp(`(^|[^A-Za-z0-9_.])${name}\\s*\\(`);
   }
-  // vm.<name> — tolerate spaces around the dot
+  // vm.<name> / hevm.<name> — tolerate spaces around the dot, and the hevm alias
   const [, name] = token.split('.');
-  return new RegExp(`\\bvm\\s*\\.\\s*${name}\\b`);
+  return new RegExp(`\\b(?:vm|hevm)\\s*\\.\\s*${name}\\b`);
 }
-const FORBIDDEN_RES = FORBIDDEN_CHEATS.map((c) => ({ cheat: c, re: toRegex(c) }));
+const FORBIDDEN_RES = [...FORBIDDEN_CHEATS.map((c) => ({ cheat: c, re: toRegex(c) })), ...VM_ACCESS_RES];
 const TOLERATED_RES = TOLERATED_CHEATS.map((c) => ({ cheat: c, re: toRegex(c) }));
 
 export interface CheatFinding {
@@ -54,29 +87,36 @@ function stripComments(source: string): string {
 export function scanCheats(source: string): CheatScan {
   const clean = stripComments(source);
   const lines = clean.split('\n');
-  const forbidden: CheatFinding[] = [];
-  const tolerated: CheatFinding[] = [];
 
-  const pinLine = (re: RegExp): number => {
-    const idx = lines.findIndex((l) => re.test(l));
-    return idx === -1 ? 0 : idx + 1;
+  // Collapse newlines so a call split across lines is still detected.
+  const collapsed = clean.replace(/\s+/g, ' ');
+
+  // Record a finding for EVERY line bearing the cheat, not only the first.
+  // stripForReferee removes exactly the lines scanCheats pins, so recording a
+  // single occurrence would leave a duplicate cheat on a later line in the
+  // referee's source — where it would run with the cheat active and could fake
+  // a theft. Collecting all occurrences keeps the two rooms honest.
+  const collect = (list: { cheat: string; re: RegExp }[]): CheatFinding[] => {
+    const out: CheatFinding[] = [];
+    for (const { cheat, re } of list) {
+      if (!new RegExp(re.source, re.flags).test(collapsed)) continue;
+      let pinned = false;
+      lines.forEach((l, i) => {
+        if (re.test(l)) {
+          out.push({ cheat, line: i + 1, text: l.trim() });
+          pinned = true;
+        }
+      });
+      // Detected only in the collapsed (cross-line) form: cannot pin to a line.
+      // Record it at line 0 so hasForbidden stays true; stripForReferee cannot
+      // remove it, and the Foundry referee refuses any run where a cheat remains.
+      if (!pinned) out.push({ cheat, line: 0, text: '' });
+    }
+    return out;
   };
 
-  // Collapse newlines so a call split across lines is still caught.
-  const collapsed = clean.replace(/\s+/g, ' ');
-  for (const { cheat, re } of FORBIDDEN_RES) {
-    const flat = new RegExp(re.source);
-    if (flat.test(collapsed)) {
-      const line = pinLine(re);
-      forbidden.push({ cheat, line, text: (lines[line - 1] ?? '').trim() });
-    }
-  }
-  for (const { cheat, re } of TOLERATED_RES) {
-    if (re.test(collapsed)) {
-      const line = pinLine(re);
-      tolerated.push({ cheat, line, text: (lines[line - 1] ?? '').trim() });
-    }
-  }
+  const forbidden = collect(FORBIDDEN_RES);
+  const tolerated = collect(TOLERATED_RES);
   return { forbidden, tolerated, hasForbidden: forbidden.length > 0 };
 }
 

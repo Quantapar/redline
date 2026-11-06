@@ -2,7 +2,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Candidate, RefereeRun, BalanceDelta } from '@redline/shared';
 import type { RefereeEngine, RefereeInput } from './referee.js';
-import { stripForReferee } from './cheatcodes.js';
+import { stripForReferee, scanCheats } from './cheatcodes.js';
 import { attackerGained } from '@redline/shared';
 import { detectFoundry, forgeTest } from './foundry.js';
 
@@ -48,6 +48,25 @@ export class FoundryRefereeEngine implements RefereeEngine {
       error: null,
     };
 
+    const { cleaned } = stripForReferee(input.candidate.forgeTest);
+
+    // Defense in depth for the plain-transactions rule, checked before anything
+    // else: never run code the stripper could not fully clean. A cheat split
+    // across lines cannot be pinned to a single line and so survives
+    // stripForReferee; rather than run it on the fork with the cheat active, the
+    // referee refuses. An error run is not a valid vote, so a cheat-bearing
+    // candidate detected here can never reach a red verdict.
+    //
+    // This is NOT the whole guarantee. scanCheats is a source-text scanner and
+    // can be evaded by cheat access that leaves no literal token (see the SECURITY
+    // note in cheatcodes.ts). The trustworthy isolation is execution-level:
+    // running the attack as broadcast transactions where the cheatcode precompile
+    // is inert. That hardening of this engine is a tracked requirement before a
+    // red from the real fork path is fully trusted.
+    if (scanCheats(cleaned).hasForbidden) {
+      return { ...base, outcome: 'error', finishedAt: now(), error: 'forbidden cheat survived stripping; referee refuses cheat-bearing run' };
+    }
+
     const foundry = await detectFoundry();
     if (!foundry.available) {
       return { ...base, outcome: 'build-failed', finishedAt: now(), error: 'foundry not installed' };
@@ -56,7 +75,6 @@ export class FoundryRefereeEngine implements RefereeEngine {
       return { ...base, outcome: 'error', finishedAt: now(), error: 'no prepared project dir' };
     }
 
-    const { cleaned } = stripForReferee(input.candidate.forgeTest);
     const testName = `Redline_${input.refereeName}`;
     try {
       const dir = join(input.projectDir, 'test');

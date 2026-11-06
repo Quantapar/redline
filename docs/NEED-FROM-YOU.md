@@ -34,8 +34,11 @@ This is only for the going-live gate demo, which is the last feature, so no rush
 
 ### 3. Decide when to flip the repo public
 You said we go public to follow ETHGlobal rules. Tell me the moment and I'll flip it.
-Before flipping I'll run a secret-scan over history to be 100% sure no key ever landed
-in a commit (they're all in gitignored `.env`, so this should be clean).
+Secret-scan status (2026-11-06): I scanned the **entire commit history** for every
+key you gave me (0G, Alchemy mainnet + Sepolia, Kobra, Hugeicons) and for PEM private
+keys — **zero hits**. The real `.env` / `.env.local` are gitignored and untracked; only
+the no-secret `.env.example` and `apps/web/.env.local.example` placeholders are committed.
+So it is clean to flip today; I'll re-run the scan right before flipping, just to be sure.
 
 ### 4. Booth questions for partners (from the brief, Part 6 — your conversations)
 Not for me to build, parking them here so we don't forget:
@@ -93,6 +96,23 @@ without it.
 - Until then the engine runs on the deterministic simulation. A ready-to-run Foundry
   fixture (vulnerable vault + a real reentrancy PoC) is in fixtures/vault/ to validate
   the real fork path the moment Foundry is installed.
+
+## Update (referee cheat isolation — security-critical, decide before trusting real-fork reds)
+An independent review of the cheatcode defense found that source-text detection alone can be
+evaded: a hunter can alias the `Vm` handle or call the cheatcode precompile address directly, and
+because every referee is fooled the same way, the council could reach a false RED. I hardened the
+static scanner to catch every demonstrated vector (precompile address, `Vm` cast/alias, the `hevm`
+handle, `changePrank`/`deployCode`) and the referee now refuses any candidate where a cheat
+survives — so the bar is much higher and all current paths stay safe (the simulation path never
+runs untrusted code; without Foundry the real path can't run at all).
+
+But static matching can't be the *guarantee*. The real fix is execution-level: when Foundry is
+installed, `FoundryRefereeEngine` should run the attack as **broadcast transactions from a funded
+EOA** against the fork (not as a `forge test`), where the cheatcode precompile is inert. That's a
+focused engine change I can build once Foundry is available to verify it end-to-end. Until then, a
+red from the real fork path is defense-in-depth, not a full proof. Full write-up in SECURITY.md.
+**Nothing ships a false guarantee today** — flagging so you can decide the priority of this
+hardening relative to the demo.
 
 ## Update (referee independence)
 - For the REAL fork-based council (once Foundry is installed), referees should fork from

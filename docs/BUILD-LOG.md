@@ -428,3 +428,27 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   guard to `<body>`. The error toast and console error are now gone. All
   routes verified 200 server-side; console clean.
 - Full suite still green: 208 tests across 10 packages.
+
+## 2026-11-06 — cheat-isolation hardening (security review)
+
+- **Found a real false-RED path in the two-room boundary.** `scanCheats` pinned
+  each forbidden cheatcode to only its first line, so `stripForReferee` left a
+  duplicate cheat on any later line, which then ran in the referee with the cheat
+  active. Fixed to record and strip every occurrence. Added a `FoundryRefereeEngine`
+  guard that re-scans the stripped source and refuses (error, not a valid vote) when
+  a cheat survives — placed before Foundry detection so it's deterministic.
+- **Independent subagent review** then showed static text matching is evadable:
+  aliasing the `Vm` handle (`Vm V = Vm(0x7109…); V.deal(…)`) or calling the
+  cheatcode precompile address directly leaves no `vm.`/`deal(` token. Hardened the
+  scanner: detect the precompile address (case-insensitive), `Vm`/`IVm`/`Hevm`
+  interface casts and handle aliases, the `hevm` handle, and `changePrank`/`deployCode`.
+- **Honest limit, documented, not papered over.** Static detection is defense in
+  depth; the real guarantee is execution-level — running the referee attack as
+  broadcast transactions where the cheatcode precompile is inert. Recorded in
+  SECURITY.md (new "two-room guarantee and its current limit" section), in a code
+  SECURITY note in cheatcodes.ts, and as a tracked hardening in NEED-FROM-YOU.md.
+  Nothing ships a false guarantee today (sim path runs no untrusted code; the real
+  fork path can't run without Foundry).
+- Tests: +7 adversarial cases (duplicate-line strip, cross-line detection, Vm alias,
+  raw precompile call, hevm/changePrank/deployCode, referee refusal, council-never-reds).
+  Full suite 215 green across 10 packages (was 208).
