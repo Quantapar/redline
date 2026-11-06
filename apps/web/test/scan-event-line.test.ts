@@ -17,6 +17,13 @@ describe('describeScanEvent', () => {
     expect(describeScanEvent({ type: 'done', redCount: 2 })).toEqual({ text: 'Scan complete — 2 red', hue: 'error' });
     expect(describeScanEvent({ type: 'done', redCount: 0 })?.hue).toBe('success');
   });
+  it('describes a candidate and a log event', () => {
+    expect(describeScanEvent({ type: 'candidate', model: 'glm-5.3', weaknessClass: 'reentrancy', contract: 'Vault' }))
+      .toEqual({ text: 'glm-5.3 proposed a reentrancy attack on Vault', hue: undefined });
+    expect(describeScanEvent({ type: 'log', message: 'prepared 1 target(s)' }))
+      .toEqual({ text: 'prepared 1 target(s)', hue: undefined });
+  });
+
   it('returns null for unknown events', () => {
     expect(describeScanEvent({ type: 'open' })).toBeNull();
   });
