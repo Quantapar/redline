@@ -90,7 +90,7 @@ export default async function OverviewPage() {
                 <Link
                   key={finding.id}
                   href={`/findings/${finding.id}`}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 outline-none transition-[transform,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-destructive/40 focus-visible:ring-2 focus-visible:ring-ring/50 motion-safe:active:scale-[0.99]"
+                  className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 outline-none transition-[transform,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-destructive/40 focus-visible:ring-3 focus-visible:ring-ring/50 motion-safe:active:scale-[0.99]"
                 >
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-destructive/10 text-destructive">
                     <Icon icon={Bug01Icon} size={16} />

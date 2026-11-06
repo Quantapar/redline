@@ -41,7 +41,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           href={item.href}
           onClick={onNavigate}
           className={cn(
-            'group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+            'group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
             isActive(item.href)
               ? 'bg-sidebar-accent text-sidebar-accent-foreground'
               : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-[100dvh] bg-background">
       <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r border-border bg-sidebar md:flex">
         <div className="flex h-14 items-center px-4">
-          <Link href="/" className="rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+          <Link href="/" className="rounded-md px-1 py-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
             <Wordmark />
           </Link>
         </div>

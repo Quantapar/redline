@@ -389,3 +389,11 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - docker-compose (postgres, redis, web, worker) + Dockerfiles. The worker image installs Foundry,
   so `docker compose up` runs the REAL fork-based council in-container without a host install
   (the host sandbox blocks Foundry). compose syntax validated. Addresses the sealed-room deployment.
+
+## 2026-11-06 — craft pass (design-eng review)
+- Clickable finding/scan cards now give press feedback (motion-safe active:scale 0.99, 150ms,
+  project ease-out), matching the Kobra buttons, so they feel responsive.
+- Aligned custom focus rings to Kobra's ring-3 for a cohesive focus treatment.
+- Walked the states: hover is already (hover:hover)-gated by Tailwind v4; numbers are tabular;
+  reduced-motion is handled; dark-only so no theme drift. The dashboard deliberately has NO entrance
+  animation (seen every visit, not once).
