@@ -53,9 +53,17 @@
   box-sizing: border-box;
 }
 
-:where(.ov-stage) :where(h2, h3, p, ul, ol) {
-  margin: 0;
-  padding: 0;
+/* Element resets live in Tailwind's base layer. Unlayered CSS beats every
+   layered rule regardless of specificity, so unlayered element resets here
+   silently overrode the utilities on every Kobra component inside the stage
+   (a <Button>'s text-primary-foreground lost to `color: inherit`, leaving a
+   light label on a light button). In @layer base they still reset bare markup,
+   but a component's own utility classes win again. */
+@layer base {
+  :where(.ov-stage) :where(h2, h3, p, ul, ol) {
+    margin: 0;
+    padding: 0;
+  }
 }
 
 .ov-list {
@@ -64,18 +72,20 @@
   gap: 2px;
 }
 
-:where(.ov-stage) :where(ul, ol) {
-  list-style: none;
-}
+@layer base {
+  :where(.ov-stage) :where(ul, ol) {
+    list-style: none;
+  }
 
-:where(.ov-stage) :where(button) {
-  font: inherit;
-  color: inherit;
-  border: 0;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  :where(.ov-stage) :where(button) {
+    font: inherit;
+    color: inherit;
+    border: 0;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 .ov-stage :focus-visible {
