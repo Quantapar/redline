@@ -20,8 +20,9 @@ not a mockup.
    the smallest fix — checks-effects-interactions — with a plain explanation and a
    diff. It opens on a branch with the attack saved as a permanent regression test.
 
-5. **Green**. The saved attack re-runs against the fix. Green means it held. The same
-   attack re-runs on every future change, so the bug can never quietly come back.
+5. **Forever-test**. The attack is saved and re-runs on every future change, so the
+   bug can never quietly come back — a reproduced one is flagged as a regression.
+   (Re-attacking the proposed fix on a fresh fork before merge activates with Foundry.)
 
 ## The one line
 Others reason that a bug might be reachable. Redline proves it by taking the money
@@ -32,3 +33,9 @@ on a copy where nothing real is at stake — and only then raises an alarm.
 - Real Postgres persistence, Redis-backed live streaming, the full scan pipeline.
 - The council consensus, the two-room cheat defense, the budget cap, and the
   ownership gate are all enforced in code and unit-tested.
+
+## What needs Foundry (honest scope)
+Referees currently vote on a deterministic simulation of each attack, not a real
+fork execution. Installing Foundry switches the engine to the real fork-based
+referee and enables re-attacking a proposed fix before merge. Nothing here claims a
+real-fork proof until that is on; see SECURITY.md for the isolation that step adds.

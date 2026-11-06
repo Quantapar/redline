@@ -28,7 +28,9 @@ stays locked until you prove you control the contract):
 4. **Referee council** re-runs each candidate as plain transactions on independent
    fresh forks. A finding is red only if the referees agree value moved.
 5. **Fix it** opens a PR with the smallest fix and saves the attack as a permanent
-   regression test. The fix is re-attacked before it can go green.
+   regression test that re-runs on every future change, so a fixed bug can't quietly
+   return. (Re-attacking the proposed fix on a fresh fork before merge activates with
+   Foundry; until then the saved attack guards every later scan.)
 6. **Going-live gates** block red code from merging or deploying.
 
 The referee council is the heart of the product: the search can vary and cut corners,

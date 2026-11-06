@@ -44,8 +44,8 @@ export function FixItButton({ findingId }: { findingId: string }) {
           <DialogHeader>
             <DialogTitle>Proposed fix</DialogTitle>
             <DialogDescription>
-              The smallest change that closes the hole. A human always reviews before it merges, and the saved
-              attack re-runs against the fix before it can go green.
+              The smallest change that closes the hole. A human always reviews before it merges, and the
+              attack is saved as a permanent test that re-runs on every future change.
             </DialogDescription>
           </DialogHeader>
           {loading ? (

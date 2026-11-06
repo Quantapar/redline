@@ -506,3 +506,16 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   now shows a role="alert" message and leaves the action available to retry. The
   FixItButton already handled errors; this brings the two to parity.
 - Suite: 219 green across 10 packages.
+
+## 2026-11-06 — doc/UI honesty: re-attack claim scoped to Foundry
+
+- The README, the Fix-it dialog, and DEMO.md stated as fact that a proposed fix is
+  "re-attacked before it can go green", but the fix route sets reattackPassed=null
+  ("runs on a fork once Foundry is enabled") — that pre-merge re-attack isn't wired.
+  Corrected all three to claim only what's true now: the attack is saved as a
+  forever-test that re-runs on every future change (implemented + verified this
+  session), with the fork-based re-attack-the-fix noted as Foundry-gated.
+- Added a "What needs Foundry" section to DEMO.md so the simulation-vs-real-fork
+  scope is explicit for anyone reading the repo.
+- Verified the documented setup: `pnpm smoke` passes (Postgres, Redis, 0G 125 models,
+  archive RPC block live, Foundry correctly reported absent).
