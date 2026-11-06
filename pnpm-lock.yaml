@@ -41,9 +41,15 @@ importers:
       bullmq:
         specifier: 5.34.5
         version: 5.34.5
+      dotenv:
+        specifier: 16.6.1
+        version: 16.6.1
       probot:
         specifier: 13.4.5
         version: 13.4.5
+      smee-client:
+        specifier: 3.1.1
+        version: 3.1.1
     devDependencies:
       '@types/node':
         specifier: 22.10.5
@@ -3168,6 +3174,11 @@ packages:
   simple-swizzle@0.2.4:
     resolution: {integrity: sha512-nAu1WFPQSMNr2Zn9PGSZK9AGn4t/y97lEm+MXTtUDwfP0ksAIX4nO+6ruD9Jwut4C49SB1Ws+fbXsm/yScWOHw==}
 
+  smee-client@3.1.1:
+    resolution: {integrity: sha512-2XGrGA83suqtC/Vn1v/MUAPN+hLSYwTiopqjx97tHGzKMBLJYIeCEcch2dfqFLEXInS6U1pm+jwSQFbphLrg9w==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
 
@@ -3359,6 +3370,10 @@ packages:
   undici-types@6.20.0:
     resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
 
+  undici@6.29.1:
+    resolution: {integrity: sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==}
+    engines: {node: '>=18.17'}
+
   universal-github-app-jwt@1.2.0:
     resolution: {integrity: sha512-dncpMpnsKBk0eetwfN8D8OUHGfiDhhJ+mtsbMl+7PfW7mYjiH8LIcqRmYMtzYLgSh47HjfdBtrBwIQ/gizKR3g==}
 
@@ -3383,6 +3398,10 @@ packages:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
+
+  validator@13.15.35:
+    resolution: {integrity: sha512-TQ5pAGhd5whStmqWvYF4OjQROlmv9SMFVt37qoCBdqRffuuklWYQlCNnEs2ZaIBD1kZRNnikiZOS1eqgkar0iw==}
+    engines: {node: '>= 0.10'}
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -6207,6 +6226,13 @@ snapshots:
       is-arrayish: 0.3.4
     optional: true
 
+  smee-client@3.1.1:
+    dependencies:
+      commander: 12.1.0
+      eventsource: 3.0.7
+      undici: 6.29.1
+      validator: 13.15.35
+
   sonic-boom@4.2.1:
     dependencies:
       atomic-sleep: 1.0.0
@@ -6338,6 +6364,8 @@ snapshots:
 
   undici-types@6.20.0: {}
 
+  undici@6.29.1: {}
+
   universal-github-app-jwt@1.2.0:
     dependencies:
       '@types/jsonwebtoken': 9.0.10
@@ -6356,6 +6384,8 @@ snapshots:
       react: 19.0.0
 
   uuid@9.0.1: {}
+
+  validator@13.15.35: {}
 
   vary@1.1.2: {}
 
