@@ -1,5 +1,5 @@
 import {
-  BudgetGuard, WeaknessClass, Policy, ExploitPlan, type Candidate, type Finding,
+  BudgetGuard, WeaknessClass, Policy, ExploitPlan, extractContractName, type Candidate, type Finding,
 } from '@redline/shared';
 import {
   type Database, setScanStatus, getScan, getRepository, insertCandidate, insertRefereeRuns,
@@ -138,7 +138,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   for (const rt of regTests) {
     const forgeTest = decrypt(rt.forgeTest);
     const wc = WeaknessClass.safeParse(rt.weaknessClass);
-    const contract = rt.targetContract ?? forgeTest.match(/contract\s+(\w+)/)?.[1] ?? 'the contract';
+    const contract = rt.targetContract ?? extractContractName(forgeTest, 'the contract');
     const regPlan = ExploitPlan.safeParse(rt.plan);
     const regCand: Candidate = {
       id: `reg_${rt.id}`, scanId, hunterModel: 'forever-test', modelReceipt: null,

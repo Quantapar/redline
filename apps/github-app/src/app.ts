@@ -2,6 +2,7 @@ import type { Probot, Context } from 'probot';
 import { createDb, schema, createScan, and, eq, desc } from '@redline/db';
 import { createScanQueue, enqueueScan, createRedis, scanQueueName } from '@redline/worker';
 import { setScanCheckRun, getScanCompletionContext } from '@redline/db';
+import { extractContractName } from '@redline/shared';
 import { QueueEvents } from 'bullmq';
 import {
   decideIntake, buildCheckOutput, buildVerdictComment, buildPendingComment, VERDICT_MARKER, type IntakeEvent,
@@ -261,7 +262,7 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
         const source = Buffer.from(data.content, (data.encoding as BufferEncoding) ?? 'base64')
           .toString('utf8')
           .slice(0, MAX_SOURCE_CHARS);
-        const contract = source.match(/contract\s+(\w+)/)?.[1] ?? '';
+        const contract = extractContractName(source, '');
         targets.push({ file, contract, source, changedFunctions: [], connectedFunctions: [] });
       } catch {
         // file deleted or unreadable at this ref; skip it

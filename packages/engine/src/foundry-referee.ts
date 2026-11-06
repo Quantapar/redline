@@ -102,9 +102,14 @@ export class FoundryRefereeEngine implements RefereeEngine {
     const foundry = await detectFoundry();
     if (!foundry.available) return fail('build-failed', 'foundry not installed');
     if (!input.projectDir) return fail('error', 'no prepared project dir');
-    if (input.forkUrl && !plan.targetAddress) {
-      return fail('error', 'fork referee needs the deployed target address');
-    }
+    // Use a FORK only when the candidate actually targets an already-deployed
+    // address on that fork; otherwise run on a fresh chain and deploy the contract
+    // under review from the prepared project's own build. This matters for
+    // deployment: configuring ARCHIVE_RPC_URLS would otherwise force every candidate
+    // onto the fork path, where a hunter-authored plan (which has no on-chain target
+    // address) could never be measured — turning every scan inconclusive. Fresh-chain
+    // is the correct default for a PR whose contract source is in hand.
+    const useFork = Boolean(input.forkUrl && plan.targetAddress);
 
     // Each referee compiles in its own throwaway working dir that shares the
     // prepared project's src/ and lib/ (forge-std) by symlink but holds only this
@@ -141,15 +146,15 @@ export class FoundryRefereeEngine implements RefereeEngine {
         return fail('build-failed', String(err).slice(0, 300));
       }
 
-      node = input.forkUrl
-        ? await startFork({ forkUrl: input.forkUrl, block: input.forkBlock || undefined })
+      node = useFork
+        ? await startFork({ forkUrl: input.forkUrl!, block: input.forkBlock || undefined })
         : await startAnvil();
       const honest = ANVIL_ACCOUNTS[1]!;
 
       // The target: on a fork it already exists; on a fresh chain the honest wallet
       // deploys the contract under review from the prepared project's own build.
       let targetAddress: string;
-      if (input.forkUrl) {
+      if (useFork) {
         targetAddress = plan.targetAddress!;
       } else {
         let targetBytecode: string;
