@@ -222,6 +222,9 @@ function Sidebar({ openAlarms, user }: { openAlarms: number; user: ShellUser }) 
 
 export function AppShell({ children, openAlarms = 0, user = null }: { children: React.ReactNode; openAlarms?: number; user?: ShellUser }) {
   const [open, setOpen] = useState(false);
+  // The home page is the onboarding for everyone, signed in or not: it brings its
+  // own header and never sits inside the dashboard's sidebar and topbar
+  if (usePathname() === '/') return <>{children}</>;
 
   return (
     <div className="ov-stage ov-stage--app">

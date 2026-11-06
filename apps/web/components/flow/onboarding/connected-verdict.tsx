@@ -96,7 +96,7 @@ export function ConnectedVerdict({
   ) : null;
 
   const anotherButton = (
-    <Button variant="ghost" size="md" onClick={onAnother}>
+    <Button variant="secondary" size="md" onClick={onAnother}>
       Attack another repository
     </Button>
   );
@@ -106,9 +106,6 @@ export function ConnectedVerdict({
       <div data-component="Verdict" className="mx-auto w-full max-w-[1120px] px-5 pt-8 pb-36 sm:px-8 lg:pt-14">
         <ReportView report={load.report} repoName={repo.name} />
         <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
-          <Button variant="secondary" size="md" nativeButton={false} render={<a href={`/scans/${scan.id}`} />}>
-            Open the full report
-          </Button>
           {anotherButton}
           {checkLink}
         </div>
