@@ -452,3 +452,19 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Tests: +7 adversarial cases (duplicate-line strip, cross-line detection, Vm alias,
   raw precompile call, hevm/changePrank/deployCode, referee refusal, council-never-reds).
   Full suite 215 green across 10 packages (was 208).
+
+## 2026-11-06 — more security hardening (same review thread)
+
+- **ffi / system-access cheats.** vm.ffi runs arbitrary shell commands on the
+  referee host (RCE in a sandbox running untrusted hunter tests); it plus the
+  filesystem (readFile/writeFile/removeFile/closeFile), env (setEnv), and
+  arbitrary-bytecode (getCode/getDeployedCode) cheats were undetected. Now
+  forbidden and stripped. SECURITY.md records the forge-config controls the real
+  fork path must also set (ffi = false, empty fs_permissions).
+- **Encryption-at-rest fails closed.** crypto.ts treated a set-but-malformed
+  ENCRYPTION_KEY as "not configured" and silently stored sensitive attacks as
+  plaintext — a prod operator mistyping the key would believe they were encrypted.
+  A malformed key now throws from encrypt/decrypt/isEncryptionConfigured; an unset
+  key keeps the documented dev plaintext fallback. The AES-256-GCM mechanics were
+  otherwise sound (fresh random IV, auth tag set before final, correct offsets).
+- Suite: 216 green across 10 packages.

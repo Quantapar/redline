@@ -26,8 +26,11 @@ describe('encryption at rest', () => {
     expect(encrypt('hello')).toBe('hello');
     expect(decrypt('hello')).toBe('hello');
   });
-  it('rejects a wrong-size key', () => {
+  it('fails closed on a set-but-malformed key (never silent plaintext)', () => {
     process.env.ENCRYPTION_KEY = Buffer.from('short').toString('base64');
-    expect(isEncryptionConfigured()).toBe(false);
+    // A misconfigured key must NOT silently downgrade to the plaintext fallback.
+    expect(() => isEncryptionConfigured()).toThrow(/32-byte/);
+    expect(() => encrypt('secret')).toThrow(/32-byte/);
+    expect(() => decrypt('enc:v1:AAAA')).toThrow(/32-byte/);
   });
 });
