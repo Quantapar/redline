@@ -4,6 +4,7 @@ import './overlay.css';
 import { AppShell } from '@/components/app-shell';
 import { issueMutationToken } from '@/lib/auth';
 import { listAllFindings } from '@/lib/queries';
+import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,10 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const openAlarms = await openAlarmCount();
+  const [openAlarms, session] = await Promise.all([openAlarmCount(), auth()]);
+  const user = session?.user
+    ? { name: session.user.name ?? null, image: session.user.image ?? null, email: session.user.email ?? null }
+    : null;
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
@@ -37,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="x-redline-csrf" content={issueMutationToken()} />
       </head>
       <body suppressHydrationWarning>
-        <AppShell openAlarms={openAlarms}>{children}</AppShell>
+        <AppShell openAlarms={openAlarms} user={user}>{children}</AppShell>
       </body>
     </html>
   );

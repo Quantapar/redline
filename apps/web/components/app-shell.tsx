@@ -177,30 +177,56 @@ function Brand() {
   );
 }
 
-function Sidebar({ openAlarms }: { openAlarms: number }) {
+type ShellUser = { name: string | null; image: string | null; email: string | null } | null;
+
+function UserBox({ user }: { user: ShellUser }) {
+  if (!user) {
+    return (
+      <Link href="/login" className="ov-me ov-me--link">
+        <span className="ov-avatar" aria-hidden style={{ ['--hue' as string]: 52, width: 28, height: 28, fontSize: 12 }}>→</span>
+        <div className="ov-me__text">
+          <span className="ov-me__name">Sign in</span>
+          <span className="ov-me__role">GitHub or Google</span>
+        </div>
+      </Link>
+    );
+  }
+  const label = user.name || user.email || 'Account';
+  const initials = (user.name || user.email || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?';
+  return (
+    <Link href="/profile" className="ov-me ov-me--link" title="View profile">
+      {user.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={user.image} alt="" className="ov-me__avatar" width={28} height={28} referrerPolicy="no-referrer" />
+      ) : (
+        <span className="ov-avatar" aria-hidden style={{ ['--hue' as string]: 52, width: 28, height: 28, fontSize: 11 }}>{initials}</span>
+      )}
+      <div className="ov-me__text">
+        <span className="ov-me__name">{label}</span>
+        <span className="ov-me__role">{user.email ?? 'View profile'}</span>
+      </div>
+    </Link>
+  );
+}
+
+function Sidebar({ openAlarms, user }: { openAlarms: number; user: ShellUser }) {
   return (
     <div className="ov-side">
       <Brand />
       <ShellSearch />
       <NavList openAlarms={openAlarms} />
-      <div className="ov-me">
-        <span className="ov-avatar" aria-hidden style={{ ['--hue' as string]: 52, width: 28, height: 28, fontSize: 11 }}>AD</span>
-        <div className="ov-me__text">
-          <span className="ov-me__name">acme-defi</span>
-          <span className="ov-me__role">Pro plan</span>
-        </div>
-      </div>
+      <UserBox user={user} />
     </div>
   );
 }
 
-export function AppShell({ children, openAlarms = 0 }: { children: React.ReactNode; openAlarms?: number }) {
+export function AppShell({ children, openAlarms = 0, user = null }: { children: React.ReactNode; openAlarms?: number; user?: ShellUser }) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="ov-stage ov-stage--app">
       <div className="ov-app">
-        <Sidebar openAlarms={openAlarms} />
+        <Sidebar openAlarms={openAlarms} user={user} />
         <div className="ov-main">
           <div className="ov-topbar">
             <Sheet open={open} onOpenChange={setOpen}>
@@ -217,6 +243,9 @@ export function AppShell({ children, openAlarms = 0 }: { children: React.ReactNo
                   <Brand />
                 </div>
                 <NavList openAlarms={openAlarms} withPill={false} onNavigate={() => setOpen(false)} />
+                <div className="px-2 pb-2">
+                  <UserBox user={user} />
+                </div>
               </SheetContent>
             </Sheet>
             <Brand />
