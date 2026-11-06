@@ -55,6 +55,32 @@ describe('money — the fact the council votes on', () => {
     expect(() => attackerGained([nativeDelta('1')], '0')).toThrow();
   });
 
+  it('an empty delta set never counts as moved', () => {
+    expect(attackerGained([], '1000000000000000')).toBe(false);
+  });
+
+  it('a token gain counts even when the attacker lost native (gas)', () => {
+    const nativeLoss = nativeDelta('-100000000000000'); // spent gas, no ETH stolen
+    const tokenGain: BalanceDelta = {
+      token: '0xToken', attackerBefore: '0', attackerAfter: '5000000',
+      targetBefore: '5000000', targetAfter: '0', attackerNetOfGas: '5000000',
+    };
+    expect(attackerGained([nativeLoss, tokenGain], '1000000')).toBe(true);
+  });
+
+  it('rejects a negative threshold, not only zero', () => {
+    expect(() => attackerGained([nativeDelta('1')], '-1')).toThrow();
+  });
+
+  it('honors the tolerance band in deltaIsConsistent (gas bookkeeping)', () => {
+    const d: BalanceDelta = {
+      token: 'native', attackerBefore: '0', attackerAfter: '100',
+      targetBefore: '0', targetAfter: '0', attackerNetOfGas: '95', // off by 5 (gas)
+    };
+    expect(deltaIsConsistent(d, '5')).toBe(true);   // within tolerance
+    expect(deltaIsConsistent(d, '4')).toBe(false);  // just outside
+  });
+
   it('flags inconsistent (fabricated) deltas', () => {
     const d: BalanceDelta = {
       token: 'native',

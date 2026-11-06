@@ -639,3 +639,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   types but didn't bound field length, and the diff + explanation are persisted. Bounded
   explanation (2KB), diff (50KB), fixedSource (100KB) against oversized model output. +1 test.
 - Suite 238 green across 10 packages.
+
+## 2026-11-06 — exhaustive edge coverage for the money logic (the fact the council votes on)
+
+- Reviewed attackerGained/deltaIsConsistent (money.ts) — sound: positive-threshold dust
+  guard, native nets sum, exactly-at-threshold counts, losses don't, parameterized wei
+  parsing. The token-raw-vs-wei-threshold comparison is a known design simplification, not
+  a bug. Added the missing edge tests: empty deltas (never moved), a token gain alongside a
+  native gas loss (still moved), a negative (not just zero) threshold (throws), and the
+  deltaIsConsistent tolerance band (within vs just outside). +4 tests. Suite 242 green.
