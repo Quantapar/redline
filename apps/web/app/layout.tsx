@@ -1,9 +1,20 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './overlay.css';
 import { AppShell } from '@/components/app-shell';
 import { issueMutationToken } from '@/lib/auth';
+import { listAllFindings } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
+
+async function openAlarmCount(): Promise<number> {
+  try {
+    const findings = await listAllFindings();
+    return findings.filter((f) => f.finding.isRed && f.finding.status !== 'resolved').length;
+  } catch {
+    return 0;
+  }
+}
 
 export const metadata: Metadata = {
   title: 'Redline — proof, not opinion',
@@ -17,7 +28,8 @@ export const viewport: Viewport = {
   themeColor: '#0a0a0a',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const openAlarms = await openAlarmCount();
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
@@ -25,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="x-redline-csrf" content={issueMutationToken()} />
       </head>
       <body suppressHydrationWarning>
-        <AppShell>{children}</AppShell>
+        <AppShell openAlarms={openAlarms}>{children}</AppShell>
       </body>
     </html>
   );

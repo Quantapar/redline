@@ -7,17 +7,15 @@ import { GitBranchIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { timeAgo, shortSha } from '@/lib/format';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
+import { Head } from '@/components/overlay/ui';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RepositoriesPage() {
   const repos = await listRepositories();
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Repositories</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">Every change to these repos is attacked on a throwaway fork before it can merge.</p>
-      </div>
+    <div className="space-y-6">
+      <Head title="Repositories" meta="Every change to these repos is attacked on a throwaway fork before it can merge." />
       {repos.length === 0 ? (
         <Empty className="rounded-xl border border-border py-16">
           <EmptyHeader>
