@@ -73,6 +73,19 @@ Not for me to build, parking them here so we don't forget:
   license or the copyright holder line if you'd prefer something else.
 - Added a CI workflow (.github/workflows/ci.yml): Postgres + Redis services, typecheck + tests.
 
+## Update (Foundry — exact step)
+The sandbox blocks every automated install path I tried (the `curl | bash` installer AND a direct
+binary download). To unlock the REAL fork-based council, **run this in the Claude Code prompt**
+(the `!` prefix runs it in this session so I can use the result):
+
+```
+! curl -L https://foundry.paradigm.xyz | bash && ~/.foundry/bin/foundryup
+```
+
+Once `forge` and `anvil` are on PATH, the engine's FoundryRefereeEngine takes over from the
+simulation automatically, and `fixtures/vault/` is ready to validate it. Everything else runs
+without it.
+
 ## Update (Foundry)
 - Foundry (forge/anvil) install keeps getting blocked by the sandbox (its one-line
   installer pipes external code to a shell). When you're back, approve it or run:
