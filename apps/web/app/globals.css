@@ -1217,3 +1217,12 @@
   .toast-detail {
     transition: padding var(--toast-morph-duration) var(--toast-morph-ease);
 }
+/* Live scan feed: new log lines fade in as they stream (one property, ~160ms). */
+@keyframes logLineIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+.log-line-in { animation: logLineIn 160ms var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+  .log-line-in { animation: none; }
+}

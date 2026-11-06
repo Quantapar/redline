@@ -142,7 +142,7 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
               const line = eventLine(ev);
               if (!line) return null;
               return (
-                <div key={i} className="flex items-center gap-2 px-2 py-1">
+                <div key={i} className="log-line-in flex items-center gap-2 px-2 py-1">
                   <Icon icon={line.icon} size={13} className={line.hue === 'error' ? 'text-destructive' : line.hue === 'success' ? 'text-[var(--success)]' : 'text-muted-foreground'} />
                   <span className={line.hue === 'error' ? 'text-destructive' : ''}>{line.text}</span>
                 </div>
