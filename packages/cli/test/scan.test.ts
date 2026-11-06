@@ -18,3 +18,38 @@ describe('detectTargets', () => {
     expect(vault!.changedFunctions).toContain('deposit');
   });
 });
+
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { loadProjectPolicy } from '../src/scan.js';
+
+describe('loadProjectPolicy — reads .redline/policy.yml, falls back gracefully', () => {
+  it('loads and parses a present policy file', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rl-pol-'));
+    try {
+      mkdirSync(join(dir, '.redline'));
+      writeFileSync(join(dir, '.redline', 'policy.yml'), 'version: 1\nrules:\n  - id: no-withdraw\n    text: guard withdraw\n    severity: high\n    appliesTo: ["withdraw*"]\n');
+      const pol = await loadProjectPolicy(dir);
+      expect(pol.rules.map((r) => r.id)).toContain('no-withdraw');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('returns an empty default policy when none exists (no throw)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rl-pol-'));
+    try {
+      const pol = await loadProjectPolicy(dir);
+      expect(pol).toEqual({ version: 1, rules: [] });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('returns the default on a malformed policy file instead of crashing the scan', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rl-pol-'));
+    try {
+      mkdirSync(join(dir, '.redline'));
+      writeFileSync(join(dir, '.redline', 'policy.yml'), 'this: is: not: valid: yaml: : :\n  - broken');
+      const pol = await loadProjectPolicy(dir);
+      expect(pol.rules).toEqual([]);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});

@@ -774,3 +774,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   use them are skipped in unit tests, so they had no coverage, even after this session
   added the failed-scan handler that depends on them. Added a db test asserting the
   context shape for a real scan and null for an unknown one. +1 test. Suite 258 green.
+
+## 2026-11-06 — cover loadProjectPolicy graceful fallback
+
+- loadProjectPolicy (the `redline scan` policy loader) reads a project's
+  .redline/policy.yml and falls back to an empty default on a missing or malformed
+  file so a bad policy can't crash a local scan. It was untested. Added three cases:
+  a present policy loads its rules, a missing file yields the default, and a malformed
+  file yields the default without throwing. (Fixed a race in the first case where the
+  temp dir was removed before the async read — now awaited.) +3 tests. Suite 261 green.
