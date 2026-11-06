@@ -165,7 +165,7 @@ export const recipes = pgTable('recipes', {
 export const authUsers = pgTable('auth_user', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name'),
-  email: text('email').notNull(),
+  email: text('email'),
   emailVerified: timestamp('email_verified', { withTimezone: true }),
   image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
