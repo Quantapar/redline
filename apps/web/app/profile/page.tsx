@@ -20,7 +20,7 @@ export default async function ProfilePage() {
         title="Profile"
         meta="Your account and the repositories you've connected to Redline."
         actions={
-          <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}>
+          <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }); }}>
             <button type="submit" className="ov-button">
               <Icon icon={Logout01Icon} size={16} strokeWidth={1.6} /> Sign out
             </button>
