@@ -45,15 +45,39 @@ Two layers enforce this:
    is written into the sandbox project, rejecting absolute paths and `..` traversal so a crafted
    filename cannot escape the project dir.
 
-**Remaining integration (tracked):** the execution-level engine above exists and is proven in
-isolation. The default `FoundryRefereeEngine` still *measures* via `forge test` (where cheatcodes
-are available) and leans on layer 1 to keep them out; switching the council's real-fork measurement
-over to `runBroadcastExploit` requires candidates expressed as deployable attackers against the live
-fork target, and an end-to-end run against a real archive RPC to validate (see item #5 in
-`docs/NEED-FROM-YOU.md`). Until that measurement swap lands, a red verdict from the `forge test`
-path is treated as **defense-in-depth, not a full proof**; the broadcast path, where it runs, is a
-full proof. The deterministic simulation path (used for CI and demos) is unaffected, as it never
-executes untrusted code.
+**The measurement now runs through the execution path.** The default `FoundryRefereeEngine`
+(`packages/engine/src/foundry-referee.ts`) no longer measures via `forge test`, and never reads
+anything the attack prints. For each candidate it compiles the attacker contract against the
+prepared project (ffi off, empty `fs_permissions`), starts an anvil node (a fork at the referee's
+block, or a fresh chain), deploys the contract under review and replays the candidate's honest-user
+setup from a separate wallet, then runs the attack through `runBroadcastExploit` — a real
+transaction from a funded EOA, where the cheatcode precompile is a codeless no-op. The verdict comes
+only from measured balances: `theftFromTarget` requires value to leave the TARGET and land with the
+attacker, both at or above the threshold, so a gain funded by the attack's own setup (or by anything
+other than the contract under review) is not counted as a theft. A candidate without a runnable
+`ExploitPlan`, a build failure, or a reverted attack can never be `moved`.
+
+Two further checks make a red impossible to fake by assertion:
+- **Vote audit** (`auditRun`, `packages/shared/src/consensus/money.ts`): before the council tally,
+  any `moved` run whose deltas are missing or do not reconcile with the measured before/after
+  balances (`deltaIsConsistent`) is demoted to `error`. An error is never a valid vote, so it can
+  never contribute to a red.
+- **Fail closed on the toolchain**: `createRefereeEngine` throws when Foundry is absent instead of
+  silently using the simulation. The deterministic simulation engine (which reads a `@redline-sim`
+  directive from the attack text) is now OPT-IN only — `preferSimulation`, or
+  `REDLINE_REFEREE=simulation` — and is for offline dev, CI and the in-app demo, never a production
+  default.
+
+The toolchain also runs with a scrubbed environment (`toolEnv`): forge/cast/anvil receive only a
+small allowlist (PATH, HOME, TMPDIR, Foundry config), never the worker's secrets, so an attack that
+reaches `vm.envString` on a mis-stripped path finds nothing to exfiltrate.
+
+**Remaining (tracked):** an end-to-end run of the broadcast-based council against a real archive RPC
+on a forked mainnet target (fork path: the plan supplies the deployed target address). The
+fresh-chain path is covered end to end by `packages/engine/test/foundry-referee.test.ts`, which
+proves a genuine reentrancy reproduces (target loses what the attacker gains) while an attacker that
+only *claims* a huge net, one that reaches the cheatcode precompile through a runtime-assembled
+address, and one run against an empty vault all net exactly zero.
 
 ## Handling of secrets and customer code
 - Secrets live only in gitignored `.env` / `.env.local`; only `*.example` files are committed.

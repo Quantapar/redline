@@ -1,4 +1,4 @@
-import { WeaknessClass, type Candidate } from '@redline/shared';
+import { WeaknessClass, ExploitPlan, type Candidate } from '@redline/shared';
 import type { ChatResponse } from './router-client.js';
 
 /** Pull the first JSON object out of a model response, tolerating prose/fences. */
@@ -22,6 +22,7 @@ interface RawCandidate {
   forgeTest?: string;
   claimedValueWei?: string;
   usedShortcuts?: boolean;
+  plan?: unknown;
 }
 
 function newId(): string {
@@ -48,6 +49,11 @@ export function parseCandidates(
   for (const r of list) {
     if (!r.forgeTest || !r.summary) continue;
     const wc = WeaknessClass.safeParse(r.weaknessClass);
+    // The plan is untrusted model output; keep it only if it parses to the schema.
+    // A candidate with no valid plan is still stored (its attack text is a useful
+    // record), but the real referee cannot measure it and will vote error, so it
+    // can never reach a red by itself.
+    const parsedPlan = r.plan != null ? ExploitPlan.safeParse(r.plan) : null;
     out.push({
       id: newId(),
       scanId,
@@ -58,6 +64,7 @@ export function parseCandidates(
       targetFunction: r.targetFunction ? String(r.targetFunction).slice(0, MAX_TARGET_FUNCTION_CHARS) : null,
       summary: String(r.summary).slice(0, 500),
       forgeTest: String(r.forgeTest).slice(0, MAX_FORGE_TEST_CHARS),
+      plan: parsedPlan?.success ? parsedPlan.data : null,
       steps: [],
       claimedValueWei: /^\d+$/.test(String(r.claimedValueWei)) ? String(r.claimedValueWei) : '0',
       usedShortcuts: Boolean(r.usedShortcuts),

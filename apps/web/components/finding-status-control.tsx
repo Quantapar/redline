@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/icon';
 import { CheckmarkCircle02Icon, Cancel01Icon, Refresh01Icon } from '@hugeicons/core-free-icons';
+import { csrfHeaders } from '@/lib/csrf-client';
 
 const LABEL: Record<string, string> = { open: 'Open', acknowledged: 'Acknowledged', resolved: 'Resolved', reopened: 'Reopened' };
 
@@ -21,7 +22,7 @@ export function FindingStatusControl({ findingId, status: initial }: { findingId
     try {
       const res = await fetch(`/api/findings/${findingId}/status`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: csrfHeaders({ 'content-type': 'application/json' }),
         body: JSON.stringify({ status: next }),
       });
       if (res.ok) { setStatus(next); router.refresh(); }

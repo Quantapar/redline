@@ -74,6 +74,7 @@ export const candidates = pgTable('candidates', {
   targetFunction: text('target_function'),
   summary: text('summary').notNull(),
   forgeTest: text('forge_test').notNull(),
+  plan: jsonb('plan'),                          // ExploitPlan: how a referee reproduces it (null = not runnable)
   steps: jsonb('steps').notNull().default([]),
   claimedValueWei: text('claimed_value_wei').notNull().default('0'),
   usedShortcuts: boolean('used_shortcuts').notNull().default(false),
@@ -138,6 +139,7 @@ export const regressionTests = pgTable('regression_tests', {
   weaknessClass: text('weakness_class').notNull(),
   targetContract: text('target_contract'),
   forgeTest: text('forge_test').notNull(),
+  plan: jsonb('plan'),                          // ExploitPlan saved with the forever-test so the real referee can re-run it
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({ regRepoIdx: index('reg_repo_idx').on(t.repositoryId) }));

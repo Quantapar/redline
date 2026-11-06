@@ -1,5 +1,5 @@
 import {
-  BudgetGuard, WeaknessClass, Policy, type Candidate, type Finding,
+  BudgetGuard, WeaknessClass, Policy, ExploitPlan, type Candidate, type Finding,
 } from '@redline/shared';
 import {
   type Database, setScanStatus, getScan, getRepository, insertCandidate, insertRefereeRuns,
@@ -123,6 +123,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
       targetFunction: c.targetFunction,
       summary: c.summary,
       forgeTest: encrypt(c.forgeTest), // encrypted at rest
+      plan: (c.plan ?? null) as object | null,
       steps: c.steps as object,
       claimedValueWei: c.claimedValueWei,
       usedShortcuts: c.usedShortcuts,
@@ -138,16 +139,17 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
     const forgeTest = decrypt(rt.forgeTest);
     const wc = WeaknessClass.safeParse(rt.weaknessClass);
     const contract = rt.targetContract ?? forgeTest.match(/contract\s+(\w+)/)?.[1] ?? 'the contract';
+    const regPlan = ExploitPlan.safeParse(rt.plan);
     const regCand: Candidate = {
       id: `reg_${rt.id}`, scanId, hunterModel: 'forever-test', modelReceipt: null,
       weaknessClass: wc.success ? wc.data : 'other', targetContract: contract, targetFunction: null,
       summary: 'A saved attack from a past finding, re-run to catch a regression.',
-      forgeTest, steps: [], claimedValueWei: '0', usedShortcuts: false, createdAt: now(),
+      forgeTest, plan: regPlan.success ? regPlan.data : null, steps: [], claimedValueWei: '0', usedShortcuts: false, createdAt: now(),
     };
     const row = await insertCandidate(db, {
       scanId, hunterModel: 'forever-test', modelReceipt: null, weaknessClass: regCand.weaknessClass,
       targetContract: contract, contractSource: null, targetFunction: null, summary: regCand.summary,
-      forgeTest: encrypt(forgeTest), steps: [], claimedValueWei: '0', usedShortcuts: false,
+      forgeTest: encrypt(forgeTest), plan: (regCand.plan ?? null) as object | null, steps: [], claimedValueWei: '0', usedShortcuts: false,
     });
     dbCandidates.push({ domain: regCand, dbId: row.id, isRegression: true });
   }
@@ -226,6 +228,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
         weaknessClass: c.weaknessClass,
         targetContract: c.targetContract,
         forgeTest: encrypt(c.forgeTest), // the saved attack is encrypted at rest
+        plan: (c.plan ?? null) as object | null,
         active: true,
       });
     }

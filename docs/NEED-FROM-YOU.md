@@ -150,6 +150,32 @@ Remaining Foundry-related work (my side, not blocking you):
 - Path-traversal normalisation when writing PR-authored contract sources into the sandbox
   (noted at prepare.ts) — pairs with the above.
 
+## Update (referee now measures the theft — 2026-11-06)
+The thing the earlier log flagged as "defense-in-depth, not a full proof" is now a full proof on
+the fresh-chain path, and the forgeable self-report is gone. The real referee runs each attack as
+broadcast transactions and reads only measured balances (value must leave the target AND land with
+the attacker). A red can no longer be faked by printing a number; a vote that isn't backed by
+consistent measured deltas is demoted before the tally; and the worker fails closed when Foundry is
+absent. Details in docs/BUILD-LOG.md and SECURITY.md.
+
+What's still only on my side (not blocking you):
+- One end-to-end run of the broadcast council against a real archive RPC on a FORKED mainnet target
+  (needs ARCHIVE_RPC_URLS set and a chosen target address in the plan). The fresh-chain path is
+  covered by tests.
+- The GitHub-App/worker path emits deployable attackers from real hunter models against real PRs —
+  the fresh-chain reproduction works; validating fork-target reproduction end to end is the same
+  archive-RPC run above.
+
+New env knobs (all optional, safe defaults; see .env.example): REDLINE_MUTATION_SECRET,
+ALLOW_INSECURE_WEBHOOK, REDLINE_REFEREE, REDLINE_DEMO, FIX_GLOBAL_PER_MIN, REDLINE_SCAN_QUEUE.
+Note: in production (NODE_ENV=production) ENCRYPTION_KEY and GITHUB_WEBHOOK_SECRET are now REQUIRED
+(the services refuse to start/encrypt without them) — this is deliberate fail-closed behaviour.
+
+Decision for you: full per-user authorization on the dashboard mutations (resolve a finding, run a
+scan, generate a fix) still needs the GitHub OAuth session layer. The current build closes the
+blind-curl/cross-site hole with an HMAC CSRF token, which is enough for a single-tenant demo but is
+not per-user authz. Tell me when you want the OAuth login layer (it adds a sign-in step to the UX).
+
 ## Update (repo is PUBLIC — 2026-11-06)
 - Flipped Quantapar/redline to public after a final full-history secret scan: the 6 real
   credentials (0G, Alchemy mainnet+Sepolia, Kobra, Hugeicons, ENCRYPTION_KEY) had zero hits;

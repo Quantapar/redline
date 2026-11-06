@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Candidate, RefereeRun, RefereeOutcome, BalanceDelta } from '@redline/shared';
-import { tallyCouncil, attackerGained, type CouncilConfig, type CouncilResult, DEFAULT_COUNCIL } from '@redline/shared';
+import { tallyCouncil, theftFromTarget, auditRun, type CouncilConfig, type CouncilResult, DEFAULT_COUNCIL } from '@redline/shared';
 import { stripForReferee, scanCheats } from './cheatcodes.js';
 
 export interface RefereeInput {
@@ -98,8 +98,8 @@ export class SimulationRefereeEngine implements RefereeEngine {
       targetAfter: '0',
       attackerNetOfGas: directive.netWei,
     };
-    // The fact the council votes on: did value at or above the threshold move?
-    const moved = attackerGained([delta], input.thresholdWei);
+    // The fact the council votes on: did value at or above the threshold leave the target?
+    const moved = theftFromTarget([delta], input.thresholdWei);
     return mkRun(input, moved ? 'moved' : 'did-not-move', { deltas: [delta], traceRef: `sim://${input.refereeName}` });
   }
 }
@@ -135,7 +135,10 @@ export async function runCouncil(
   const { removed } = stripForReferee(candidate.forgeTest);
   const forRun: Candidate = { ...candidate, usedShortcuts: removed.length > 0 };
 
-  const runs = await Promise.all(
+  // Every 'moved' vote must be backed by measured deltas that add up; a vote that
+  // is not is demoted to an error before the tally, so no engine (and no attack
+  // output an engine might have trusted) can manufacture a red by assertion.
+  const runs = (await Promise.all(
     dispatch.providers.map((provider, i) =>
       engine.run({
         candidate: forRun,
@@ -147,7 +150,7 @@ export async function runCouncil(
         thresholdWei: dispatch.thresholdWei,
       }),
     ),
-  );
+  )).map(auditRun);
 
   const result = tallyCouncil(runs, dispatch.config ?? DEFAULT_COUNCIL);
   return { runs, result };

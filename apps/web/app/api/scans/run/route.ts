@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sameOrigin } from '@/lib/auth';
+import { requireMutationAuth, isDemoEnabled } from '@/lib/auth';
 import { eq, schema, createScan } from '@redline/db';
 import { SimulationRefereeEngine, type RefereeInput } from '@redline/engine';
 import { FakeRouterClient, type ChatRequest, type RouterClient } from '@redline/hunters';
@@ -34,7 +34,7 @@ class PacedClient implements RouterClient {
     JSON.stringify({
       candidates: [{
         weaknessClass: 'reentrancy', targetFunction: 'withdraw',
-        summary: 'Reentrancy in withdraw() lets a malicious receiver re-enter before the balance is zeroed and drain the vault.',
+        summary: 'Demo: reentrancy in withdraw() lets a malicious receiver re-enter before the balance is zeroed and drain the vault (simulated showcase, not a measured referee run).',
         forgeTest: '// @redline-sim exploitable=true netWei=8500000000000000000 cheatDependent=false flaky=false\nfunction testExploit() public { target.withdraw(); }',
         claimedValueWei: '8500000000000000000', usedShortcuts: false,
       }],
@@ -54,8 +54,15 @@ class PacedEngine extends SimulationRefereeEngine {
 }
 
 export async function POST(req: Request) {
-  const csrf = sameOrigin(req);
+  const csrf = requireMutationAuth(req);
   if (csrf) return csrf;
+  // This endpoint runs the PACED, SIMULATED showcase scan: its findings come from
+  // the deterministic simulation engine (a canned directive), not from a measured
+  // referee, so it is gated behind the demo flag and never on by default in prod.
+  // Real scans are driven by the GitHub App through the worker + Foundry referee.
+  if (!isDemoEnabled()) {
+    return NextResponse.json({ error: 'the in-app demo scan is disabled; real scans run via the GitHub App' }, { status: 403 });
+  }
   const rl = rateLimit(`scan:${clientKey(req)}`, 20, 60_000);
   if (!rl.ok) return NextResponse.json({ error: 'rate limited' }, { status: 429 });
   const body = await req.json().catch(() => ({}));

@@ -18,7 +18,7 @@
  * the cheatcode precompile is inert (a call to 0x7109… hits empty code and does
  * nothing), so a cheat-dependent "exploit" simply fails to move money. Until the
  * Foundry path runs attacks that way, a red verdict from it is NOT fully trusted.
- * See docs/SECURITY.md and docs/NEED-FROM-YOU.md.
+ * See SECURITY.md and docs/NEED-FROM-YOU.md.
  */
 
 /**

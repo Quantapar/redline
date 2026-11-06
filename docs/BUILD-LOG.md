@@ -978,3 +978,52 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - Also fixed a pre-existing CI bug (pnpm/action-setup "Multiple versions" vs packageManager) and
   removed a secret-scanner-flagged hardcoded test-db password from CI/compose.
 - 297 tests across 10 packages; web build passes.
+
+## 2026-11-06 — the referee now MEASURES the theft (proof, not self-report)
+
+The core promise was not yet real: the forge-test referee read the attack's own
+`console.log("REDLINE_NET", x)` and fabricated deltas around it, so any attack that printed
+a big number earned three identical RED votes. Reworked the verification core so a red can
+only come from value measured leaving the contract on chain.
+
+- **Referee rewrite** (`packages/engine/src/foundry-referee.ts`): no longer runs `forge test`
+  and reads nothing the attack prints. It requires a structured `ExploitPlan`, compiles the
+  candidate's attacker against the prepared project (ffi off, fs off), starts anvil (fork or
+  fresh chain), deploys the contract under review, replays the plan's honest-user `seed`
+  transactions from a SECOND wallet, then runs the attack through `runBroadcastExploit`. No
+  plan / build failure / revert can ever be `moved`. `seedPlanProblem` refuses a setup that
+  hands the attacker wallet money or authority.
+- **Measured theft** (`broadcast.ts` + `theftFromTarget` in shared): the verdict needs value to
+  leave the TARGET and land with the attacker, both ≥ threshold. `runBroadcastExploit` now
+  measures the target's balance too; `attackerBefore` includes the stake so the delta is
+  self-consistent and a reverted attack nets zero.
+- **Vote audit** (`auditRun`, wired in `runCouncil`): any `moved` vote with no deltas, or deltas
+  that don't reconcile with the measured balances, is demoted to `error` before the tally. An
+  engine cannot manufacture a red by assertion.
+- **Fail closed**: `createRefereeEngine` throws when Foundry is absent (simulation is opt-in via
+  `preferSimulation` / `REDLINE_REFEREE=simulation`). `toolEnv` scrubs the environment for
+  forge/cast/anvil (allowlist only) so an attack can't read worker secrets via `vm.envString`.
+  `forgeTest` is anchored to one `--match-contract` (no whole-suite run).
+- **Deploy gate fails CLOSED** (`apps/web/app/api/deploy-check/route.ts`): `councilComplete` is
+  true only when every candidate produced a decisive (non-inconclusive) finding.
+- **Mutation endpoints authed** (`apps/web/lib/auth.ts`): `requireMutationAuth` replaces the
+  same-origin-only guard that passed when Origin was absent. An HMAC CSRF token (minted in the
+  layout, sent via `lib/csrf-client.ts`) is now required; no-Origin/no-token curl is refused;
+  admin bearer still works. `/fix` gained a global budget guard that a client-controlled
+  x-forwarded-for cannot rotate around. (Residual: the token is page-embedded, so this is CSRF
+  defense, not per-user authz — the GitHub OAuth session layer is still the real multi-tenant fix.)
+- **Config fail-closed**: Probot refuses to start without `GITHUB_WEBHOOK_SECRET`
+  (unless `ALLOW_INSECURE_WEBHOOK=1`); `crypto.ts` throws in production when `ENCRYPTION_KEY`
+  is unset instead of plaintext fallback.
+- **Demo paths gated**: the paced simulated `api/scans/run` and `scripts/seed-demo.mts` are now
+  behind an explicit demo flag and never write fake findings by default.
+- **Live SSE for real scans** (`packages/worker/src/scan-events-pub.ts` + processor): worker
+  scans publish to the same Redis channel the web SSE route subscribes to (was dead in prod).
+- **Hunters emit deployable attackers + a plan** (`prompts.ts`, `hunter.ts`), persisted on a new
+  `plan` jsonb column (candidates + regressionTests) and reloaded for forever-tests.
+- **Queue isolation**: `REDLINE_SCAN_QUEUE` lets a test run use its own line, so a long-running
+  dev worker on the default queue can no longer silently eat test jobs (the old queue-e2e footgun).
+
+Suite: 312 tests across 10 packages, all green with Foundry present (engine 75: +6 end-to-end
+referee tests proving a genuine reentrancy reproduces while a lying/cheating/empty-vault attack
+nets zero). Full typecheck clean. Independent review of the diff before push.

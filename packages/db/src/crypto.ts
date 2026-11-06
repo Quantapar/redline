@@ -18,7 +18,15 @@ const PREFIX = 'enc:v1:';
  */
 function key(): Buffer | null {
   const raw = process.env.ENCRYPTION_KEY;
-  if (!raw) return null;
+  if (!raw) {
+    // The plaintext fallback is a LOCAL-DEV convenience only. In production,
+    // sensitive attacks must never be written in the clear, so a missing key is a
+    // hard failure there rather than a silent downgrade.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ENCRYPTION_KEY is required in production; refusing to store sensitive data as plaintext.');
+    }
+    return null;
+  }
   const k = Buffer.from(raw, 'base64');
   if (k.length !== 32) {
     throw new Error(

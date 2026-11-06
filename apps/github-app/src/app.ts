@@ -1,6 +1,6 @@
 import type { Probot, Context } from 'probot';
 import { createDb, schema, createScan } from '@redline/db';
-import { createScanQueue, enqueueScan, createRedis, SCAN_QUEUE } from '@redline/worker';
+import { createScanQueue, enqueueScan, createRedis, scanQueueName } from '@redline/worker';
 import { setScanCheckRun, getScanCompletionContext } from '@redline/db';
 import { QueueEvents } from 'bullmq';
 import { decideIntake, buildCheckOutput, type IntakeEvent } from './scan-intake.js';
@@ -86,7 +86,7 @@ export function redlineApp(app: Probot, deps: RedlineAppDeps = {}): void {
 
   // When a scan completes (in the separate worker process), resolve its check.
   if (!deps.skipCompletion) {
-  const events = new QueueEvents(SCAN_QUEUE, { connection: createRedis() });
+  const events = new QueueEvents(scanQueueName(), { connection: createRedis() });
   const scanIdFor = async (jobId: string) => (await queue.getJob(jobId))?.data.scanId as string | undefined;
   const authFor = (installationId: number) => app.auth(installationId);
   events.on('completed', async ({ jobId }: { jobId: string }) => {

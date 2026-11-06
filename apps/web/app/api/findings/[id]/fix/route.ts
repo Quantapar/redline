@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sameOrigin } from '@/lib/auth';
+import { requireMutationAuth } from '@/lib/auth';
 import { eq, schema } from '@redline/db';
 import { OGRouterClient, buildFixMessages, parseFix, DEFAULT_FIXER_MODEL } from '@redline/hunters';
 import { db } from '@/lib/db';
@@ -9,10 +9,15 @@ import { rateLimit, clientKey } from '@/lib/rate-limit';
 export const runtime = 'nodejs';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const csrf = sameOrigin(req);
+  const csrf = requireMutationAuth(req);
   if (csrf) return csrf;
   const rl = rateLimit(`fix:${clientKey(req)}`, 10, 60_000);
   if (!rl.ok) return NextResponse.json({ error: 'rate limited' }, { status: 429, headers: { 'retry-after': String(Math.ceil(rl.retryAfterMs / 1000)) } });
+  // A GLOBAL budget guard across ALL callers. The per-client limit above keys on
+  // x-forwarded-for, which a caller controls and can rotate; this cap does not,
+  // so total paid fix-generations per window are bounded even under IP rotation.
+  const budget = rateLimit('fix:global', Number(process.env.FIX_GLOBAL_PER_MIN ?? 30), 60_000);
+  if (!budget.ok) return NextResponse.json({ error: 'fix budget temporarily exhausted; try again shortly' }, { status: 429, headers: { 'retry-after': String(Math.ceil(budget.retryAfterMs / 1000)) } });
   const { id } = await params;
   if (!isUuid(id)) return NextResponse.json({ error: 'invalid id' }, { status: 400 });
   const d = db();

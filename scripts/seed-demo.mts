@@ -5,9 +5,20 @@ import { dirname, join } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 for (const line of readFileSync(join(here, '..', '.env'), 'utf8').split('\n')) {
   const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-  if (m && m[1]) process.env[m[1]] = m[2];
+  if (m && m[1] && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
 }
-process.env.DATABASE_URL = 'postgresql://manu@localhost:5432/redline';
+
+// This script writes SIMULATED findings (deterministic engine, not a measured
+// referee) and WIPES existing rows. It must be opted into explicitly so it can
+// never run against a real database by accident.
+if (process.env.REDLINE_DEMO !== '1') {
+  console.error('seed-demo refuses to run without REDLINE_DEMO=1 (it wipes rows and writes simulated findings).');
+  process.exit(1);
+}
+if (!process.env.DATABASE_URL) {
+  console.error('seed-demo needs DATABASE_URL set (no hardcoded fallback).');
+  process.exit(1);
+}
 
 const { createDb, schema, createScan } = await import('../packages/db/src/index.ts');
 const { SimulationRefereeEngine } = await import('../packages/engine/src/index.ts');

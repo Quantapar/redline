@@ -2,6 +2,25 @@ import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 const pexec = promisify(execFile);
 
+/**
+ * The environment handed to forge / cast / anvil. The referee runs UNTRUSTED
+ * attack code through these tools, and forge exposes the process environment to
+ * Solidity via vm.envString & co. If the toolchain simply inherited process.env,
+ * an attack could read the worker's secrets (router keys, RPC URLs, DB password)
+ * and leak them through a log line. So only what the tools need to run is passed:
+ * PATH (to find the binaries and solc), HOME (solc/forge caches), TMPDIR, and
+ * Foundry's own config vars. Everything else is withheld.
+ */
+export function toolEnv(): NodeJS.ProcessEnv {
+  const keep = ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'LANG', 'LC_ALL', 'FOUNDRY_DIR', 'FOUNDRY_PROFILE', 'SSL_CERT_FILE', 'SSL_CERT_DIR'];
+  const env: Record<string, string> = {};
+  for (const k of keep) {
+    const v = process.env[k];
+    if (v !== undefined) env[k] = v;
+  }
+  return env as unknown as NodeJS.ProcessEnv;
+}
+
 export interface FoundryInfo {
   available: boolean;
   forgeVersion: string | null;
@@ -12,7 +31,7 @@ export interface FoundryInfo {
 export async function detectFoundry(): Promise<FoundryInfo> {
   const tryVersion = async (bin: string): Promise<string | null> => {
     try {
-      const { stdout } = await pexec(bin, ['--version'], { timeout: 10_000 });
+      const { stdout } = await pexec(bin, ['--version'], { timeout: 10_000, env: toolEnv() });
       return stdout.trim().split('\n')[0] ?? null;
     } catch {
       return null;
@@ -69,7 +88,7 @@ async function launchAnvil(opts: LaunchOpts): Promise<AnvilHandle> {
   if (opts.block !== undefined) args.push('--fork-block-number', String(opts.block));
   if (opts.mnemonic) args.push('--mnemonic', opts.mnemonic);
 
-  const child: ChildProcess = spawn(opts.bin ?? 'anvil', args, { stdio: 'ignore' });
+  const child: ChildProcess = spawn(opts.bin ?? 'anvil', args, { stdio: 'ignore', env: toolEnv() });
   const spawnState: { error: Error | null } = { error: null };
   child.once('error', (err) => { spawnState.error = err; });
   const rpcUrl = `http://127.0.0.1:${port}`;
@@ -171,7 +190,7 @@ function assertSafeContractName(name: string): void {
 
 /** Read an address's native balance (wei, decimal string) at the node's head. */
 export async function castBalance(rpcUrl: string, address: string, bin = 'cast'): Promise<string> {
-  const { stdout } = await pexec(bin, ['balance', address, '--rpc-url', rpcUrl], { timeout: 20_000 });
+  const { stdout } = await pexec(bin, ['balance', address, '--rpc-url', rpcUrl], { timeout: 20_000, env: toolEnv() });
   return stdout.trim();
 }
 
@@ -196,7 +215,7 @@ export async function castDeploy(opts: {
     args.push(opts.constructorSig, ...(opts.constructorArgs ?? []));
   }
   if (opts.valueWei && opts.valueWei !== '0') args.push('--value', opts.valueWei);
-  const { stdout } = await pexec(opts.bin ?? 'cast', args, { timeout: 60_000, maxBuffer: 8 * 1024 * 1024 });
+  const { stdout } = await pexec(opts.bin ?? 'cast', args, { timeout: 60_000, maxBuffer: 8 * 1024 * 1024, env: toolEnv() });
   const receipt = JSON.parse(stdout) as { contractAddress?: string };
   if (!receipt.contractAddress) throw new Error('deploy produced no contractAddress');
   return receipt.contractAddress;
@@ -219,7 +238,7 @@ export async function castSend(opts: {
   if (opts.valueWei && opts.valueWei !== '0') a.push('--value', opts.valueWei);
   if (opts.gasLimit) a.push('--gas-limit', String(opts.gasLimit));
   try {
-    const { stdout } = await pexec(opts.bin ?? 'cast', a, { timeout: 60_000, maxBuffer: 8 * 1024 * 1024 });
+    const { stdout } = await pexec(opts.bin ?? 'cast', a, { timeout: 60_000, maxBuffer: 8 * 1024 * 1024, env: toolEnv() });
     const receipt = JSON.parse(stdout) as { status?: string };
     // anvil returns "0x1" (success) or "0x0" (reverted) in the receipt status.
     return { status: receipt.status === '0x1' || receipt.status === '1', raw: stdout };
@@ -236,18 +255,26 @@ export interface ForgeTestResult {
 }
 
 /**
- * Run `forge test` against a project and return parsed JSON results.
- * `matchTest` narrows to one test (the candidate attack).
+ * Run `forge test` for ONE test contract and return parsed JSON results.
+ * `matchContract` is required and anchored (^...$) so a run can never pick up
+ * the rest of a repository's suite: one unrelated failing test would otherwise
+ * turn every candidate into did-not-move. This helper is a build/compile aid;
+ * it is NOT a verdict source — the referee measures via broadcast transactions.
  */
 export async function forgeTest(opts: {
   projectDir: string;
+  matchContract: string;
   matchTest?: string;
   forkUrl?: string;
   forkBlock?: number;
   timeoutMs?: number;
 }): Promise<ForgeTestResult> {
-  const args = ['test', '--json'];
-  if (opts.matchTest) args.push('--match-test', opts.matchTest);
+  assertSafeContractName(opts.matchContract);
+  const args = ['test', '--json', '--match-contract', `^${opts.matchContract}$`];
+  if (opts.matchTest) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(opts.matchTest)) throw new Error(`unsafe test name: ${opts.matchTest}`);
+    args.push('--match-test', `^${opts.matchTest}$`);
+  }
   if (opts.forkUrl) args.push('--fork-url', opts.forkUrl);
   if (opts.forkBlock) args.push('--fork-block-number', String(opts.forkBlock));
   try {
@@ -255,6 +282,7 @@ export async function forgeTest(opts: {
       cwd: opts.projectDir,
       timeout: opts.timeoutMs ?? 180_000,
       maxBuffer: 32 * 1024 * 1024,
+      env: toolEnv(),
     });
     let json: unknown = null;
     try {
@@ -275,27 +303,59 @@ export async function forgeTest(opts: {
   }
 }
 
-/** Compile a Foundry project to artifacts; returns the deployed/creation bytecode for a contract. */
+/** Compile a Foundry project (`forge build`). Throws with the compiler output on failure. */
+export async function forgeBuild(opts: { projectDir: string; timeoutMs?: number; bin?: string }): Promise<void> {
+  try {
+    await pexec(opts.bin ?? 'forge', ['build'], {
+      cwd: opts.projectDir,
+      timeout: opts.timeoutMs ?? 180_000,
+      maxBuffer: 32 * 1024 * 1024,
+      env: toolEnv(),
+    });
+  } catch (err: unknown) {
+    const e = err as { stdout?: string; stderr?: string; message?: string };
+    throw new Error(`forge build failed: ${((e.stderr ?? '') + (e.stdout ?? '') || e.message || '').slice(0, 2000)}`);
+  }
+}
+
+/**
+ * Read a contract's CREATION bytecode from a built project. forge writes
+ * out/<SourceFile>.sol/<Contract>.json; the source file name need not match the
+ * contract name, so every out/<x>.sol/ dir is checked for <Contract>.json. The
+ * name must be a bare identifier so a crafted value cannot read another file.
+ */
+export async function readArtifactBytecode(projectDir: string, contractName: string): Promise<string> {
+  assertSafeContractName(contractName);
+  const { readFile, readdir } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const out = join(projectDir, 'out');
+  const dirs = await readdir(out, { withFileTypes: true }).catch(() => []);
+  const candidates = [
+    join(out, `${contractName}.sol`, `${contractName}.json`),
+    ...dirs.filter((d) => d.isDirectory()).map((d) => join(out, d.name, `${contractName}.json`)),
+  ];
+  for (const path of candidates) {
+    let raw: string;
+    try {
+      raw = await readFile(path, 'utf8');
+    } catch {
+      continue;
+    }
+    const artifact = JSON.parse(raw) as { bytecode?: { object?: string } };
+    const bytecode = artifact.bytecode?.object;
+    if (bytecode && bytecode !== '0x') return bytecode;
+  }
+  throw new Error(`no creation bytecode for ${contractName}`);
+}
+
+/** Compile a Foundry project and return a contract's creation bytecode. */
 export async function forgeBuildArtifact(opts: {
   projectDir: string;
   contractName: string;
   timeoutMs?: number;
   bin?: string;
 }): Promise<{ bytecode: string }> {
-  // contractName is used to build a filesystem path below; it must be a bare
-  // Solidity identifier so a crafted `../`-laden name cannot read another file.
   assertSafeContractName(opts.contractName);
-  await pexec(opts.bin ?? 'forge', ['build'], {
-    cwd: opts.projectDir,
-    timeout: opts.timeoutMs ?? 180_000,
-    maxBuffer: 32 * 1024 * 1024,
-  });
-  // forge writes out/<File>.sol/<Contract>.json; read the creation bytecode.
-  const { readFile } = await import('node:fs/promises');
-  const { join } = await import('node:path');
-  const artifactPath = join(opts.projectDir, 'out', `${opts.contractName}.sol`, `${opts.contractName}.json`);
-  const artifact = JSON.parse(await readFile(artifactPath, 'utf8')) as { bytecode?: { object?: string } };
-  const bytecode = artifact.bytecode?.object;
-  if (!bytecode) throw new Error(`no creation bytecode for ${opts.contractName}`);
-  return { bytecode };
+  await forgeBuild(opts);
+  return { bytecode: await readArtifactBytecode(opts.projectDir, opts.contractName) };
 }

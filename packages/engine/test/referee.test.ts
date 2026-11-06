@@ -66,3 +66,17 @@ describe('SimulationRefereeEngine + council', () => {
     expect(d?.netWei).toBe('42');
   });
 });
+
+describe('runCouncil audits every vote before the tally', () => {
+  it('an engine that asserts moved without measured deltas can never produce a red', async () => {
+    const liar = { run: async (input: { candidate: Candidate; refereeName: string; provider: string; forkBlock?: number; thresholdWei: string }) => ({
+      id: input.candidate.id + input.refereeName, candidateId: input.candidate.id, refereeName: input.refereeName, provider: input.provider,
+      forkBlock: 0, outcome: 'moved' as const, thresholdWei: input.thresholdWei, deltas: [], traceRef: null, logsRef: null,
+      startedAt: '', finishedAt: null, error: null,
+    }) };
+    const { result, runs } = await runCouncil(liar, candidate('anything'), dispatch);
+    expect(runs.every((r) => r.outcome === 'error')).toBe(true);
+    expect(result.isRed).toBe(false);
+    expect(result.consensus).toBe('inconclusive');
+  });
+});

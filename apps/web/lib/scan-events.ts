@@ -1,7 +1,9 @@
 import { Redis } from 'ioredis';
+import { channelFor as workerChannelFor } from '@redline/worker';
 import type { ScanEvent } from '@redline/worker';
 
-export const channelFor = (scanId: string) => `redline:scan:${scanId}`;
+// Reuse the worker's channel scheme so the live room and the worker never drift.
+export const channelFor = workerChannelFor;
 const url = () => process.env.REDIS_URL ?? 'redis://localhost:6379';
 
 /** A short-lived publisher connection. */

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sameOrigin } from '@/lib/auth';
+import { requireMutationAuth } from '@/lib/auth';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { setFindingStatus } from '@redline/db';
 import { FindingStatus } from '@redline/shared';
@@ -9,7 +9,7 @@ import { isUuid } from '@/lib/validate';
 export const runtime = 'nodejs';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const csrf = sameOrigin(req);
+  const csrf = requireMutationAuth(req);
   if (csrf) return csrf;
   const rl = rateLimit(`status:${clientKey(req)}`, 60, 60_000);
   if (!rl.ok) return NextResponse.json({ error: 'rate limited' }, { status: 429, headers: { 'retry-after': String(Math.ceil(rl.retryAfterMs / 1000)) } });

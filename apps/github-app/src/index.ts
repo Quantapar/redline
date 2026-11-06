@@ -26,6 +26,23 @@ for (const [from, to] of Object.entries(ALIAS)) {
   if (process.env[from] && !process.env[to]) process.env[to] = process.env[from]!;
 }
 
+// Fail CLOSED on a missing webhook secret. Probot would otherwise default the
+// secret to "development", which means ANYONE who can reach the webhook endpoint
+// can forge push / pull_request events and make the app queue scans or resolve
+// checks. A real deployment MUST set GITHUB_WEBHOOK_SECRET; refuse to start
+// without it rather than run with a world-known secret. (ALLOW_INSECURE_WEBHOOK=1
+// is an explicit, documented local-only escape hatch for smee testing.)
+if (!process.env.WEBHOOK_SECRET || process.env.WEBHOOK_SECRET === 'development') {
+  if (process.env.ALLOW_INSECURE_WEBHOOK === '1') {
+    console.warn('[redline] WEBHOOK_SECRET is unset/default — running INSECURE (ALLOW_INSECURE_WEBHOOK=1). Never do this in a deployment.');
+  } else {
+    console.error(
+      '[redline] refusing to start: GITHUB_WEBHOOK_SECRET is not set (Probot would fall back to the world-known "development" secret, letting anyone forge webhook events). Set it in .env, or set ALLOW_INSECURE_WEBHOOK=1 for a local-only test.',
+    );
+    process.exit(1);
+  }
+}
+
 // Default to 3001 so it doesn't collide with the Next.js app on 3000.
 if (!process.env.PORT) process.env.PORT = '3001';
 

@@ -7,3 +7,4 @@ export * from './processor.js';
 export * from './prepare.js';
 export * from './watch-mode.js';
 export * from './cancel.js';
+export * from './scan-events-pub.js';

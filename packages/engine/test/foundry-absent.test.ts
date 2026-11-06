@@ -7,8 +7,9 @@ import type { Candidate } from '@redline/shared';
 const candidate: Candidate = {
   id: 'c1', scanId: 's1', hunterModel: 'glm-5.3', weaknessClass: 'reentrancy',
   targetContract: 'Vault', targetFunction: 'withdraw', summary: 'drains',
-  forgeTest: 'function testExploit() public { target.withdraw(); }', steps: [],
+  forgeTest: 'contract A { constructor(address) {} function attack() external payable {} }', steps: [],
   claimedValueWei: '5000000000000000000', usedShortcuts: false, createdAt: '',
+  plan: { attackerContract: 'A', targetConstructorSig: null, targetConstructorArgs: [], targetDeployValueWei: '0', seed: [], stakeWei: '0', targetAddress: null },
 };
 
 describe('honest no-proof-no-alarm when Foundry is unavailable', () => {
@@ -21,8 +22,9 @@ describe('honest no-proof-no-alarm when Foundry is unavailable', () => {
       expect(run.outcome).toBe('build-failed');
       expect(run.error).toMatch(/foundry/i);
     } else {
-      // if Foundry IS installed, it must not crash; outcome is a valid enum
-      expect(['moved', 'did-not-move', 'error', 'build-failed']).toContain(run.outcome);
+      // if Foundry IS installed, there is no prepared project: an error, never moved
+      expect(run.outcome).toBe('error');
+      expect(run.error).toMatch(/project dir/);
     }
   });
 
@@ -62,5 +64,27 @@ describe('honest no-proof-no-alarm when Foundry is unavailable', () => {
       providers: ['p1', 'p2', 'p3'], blocks: [0, 0, 0], thresholdWei: '1000000000000000',
     });
     expect(result.isRed).toBe(false);
+  });
+});
+
+describe('a candidate without a runnable plan can never be red', () => {
+  it('is an error vote (not a valid vote) before any toolchain is touched', async () => {
+    const planless: Candidate = { ...candidate, plan: null };
+    const run = await new FoundryRefereeEngine().run({
+      candidate: planless, refereeName: 'referee-a', provider: 'p1', projectDir: '/tmp/x', thresholdWei: '1000000000000000',
+    });
+    expect(run.outcome).toBe('error');
+    expect(run.error).toMatch(/plan/);
+  });
+  it('refuses a plan whose setup hands the attacker wallet anything', async () => {
+    const rigged: Candidate = {
+      ...candidate,
+      plan: { ...candidate.plan!, seed: [{ sig: 'setOwner(address)', args: ['0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'], valueWei: '0' }] },
+    };
+    const run = await new FoundryRefereeEngine().run({
+      candidate: rigged, refereeName: 'referee-a', provider: 'p1', projectDir: '/tmp/x', thresholdWei: '1000000000000000',
+    });
+    expect(run.outcome).toBe('error');
+    expect(run.error).toMatch(/attacker wallet/);
   });
 });

@@ -2,35 +2,66 @@ import { writeFile, mkdir, mkdtemp, cp, symlink, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Candidate, RefereeRun, BalanceDelta } from '@redline/shared';
+import type { RefereeRun } from '@redline/shared';
+import { ExploitPlan } from '@redline/shared';
 import type { RefereeEngine, RefereeInput } from './referee.js';
-import { stripForReferee, scanCheats } from './cheatcodes.js';
-import { attackerGained } from '@redline/shared';
-import { detectFoundry, forgeTest } from './foundry.js';
+import { scanCheats } from './cheatcodes.js';
+import {
+  detectFoundry, forgeBuild, readArtifactBytecode, startAnvil, startFork, castDeploy, castSend,
+  ANVIL_ACCOUNTS, type AnvilHandle,
+} from './foundry.js';
+import { runBroadcastExploit } from './broadcast.js';
 import { FOUNDRY_TOML } from './project.js';
 
-export function wrapTest(candidate: Candidate, cleaned: string, contractName: string): string {
-  if (/contract\s+\w+\s+is\s+Test/.test(cleaned) || /contract\s+\w+Test/.test(cleaned)) return cleaned;
-  // Wrap a bare function/body into a forge-std test contract.
-  const body = /function\s+test/i.test(cleaned) ? cleaned : `function test_Redline() public {\n${cleaned}\n}`;
-  return `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-import "forge-std/Test.sol";
-contract Redline_${contractName}_Referee is Test {
-${body}
-}`;
-}
+/** Hard cap on the value any single seed transaction may carry (anvil accounts hold 10,000 ETH). */
+export const MAX_SEED_VALUE_WEI = 1_000n * 10n ** 18n;
 
-/** Parse an optional net-value marker emitted by the attack: console.log("REDLINE_NET", x). */
-export function parseNet(raw: string): string | null {
-  const m = raw.match(/REDLINE_NET[^\d-]*(-?\d+)/);
-  return m ? m[1]! : null;
+/**
+ * Setup transactions are replayed from the honest-user wallet and may only go to
+ * the target. One may not mention the attacker's WALLET: a "seed" that hands the
+ * attacker money or authority directly is not a reproduction of a theft.
+ *
+ * Why this guard does not also need the attacker CONTRACT's (predictable) address:
+ * the theft is measured as the TARGET's balance drop caused by attack() alone.
+ * Seeds run first, so `targetBefore` is sampled AFTER them — any value a seed moved
+ * out of the target (including into the attacker contract) is already baked into
+ * `targetBefore` and is NOT credited as theft. A seed therefore cannot manufacture a
+ * theft of pre-existing funds. The only thing a seed could do is call a function the
+ * target exposes to any ordinary account (it runs from a plain wallet, not a
+ * privileged one); if that function grants an arbitrary address drain authority,
+ * that is itself the access-control vulnerability under test, so counting the
+ * resulting drain is correct, not a false positive.
+ */
+export function seedPlanProblem(plan: ExploitPlan): string | null {
+  const attackerEoa = ANVIL_ACCOUNTS[0]!.address.toLowerCase();
+  const mentionsAttacker = (v: string) => v.toLowerCase().includes(attackerEoa);
+  if (plan.targetConstructorArgs.some(mentionsAttacker)) return 'target constructor args reference the attacker wallet';
+  for (const step of plan.seed) {
+    if (step.args.some(mentionsAttacker)) return 'a seed step references the attacker wallet';
+    if (BigInt(step.valueWei) > MAX_SEED_VALUE_WEI) return 'a seed step carries more value than the honest wallet holds';
+  }
+  if (BigInt(plan.targetDeployValueWei) > MAX_SEED_VALUE_WEI) return 'target deploy value exceeds the honest wallet';
+  if (BigInt(plan.stakeWei) > MAX_SEED_VALUE_WEI) return 'stake exceeds the attacker wallet';
+  return null;
 }
 
 /**
- * Real referee: runs the stripped attack as a forge test on a fresh fork. A test
- * is authored to PASS only when the exploit truly moves value, so a passing run
- * is the fact "money moved". Cheat shortcuts are stripped first.
+ * The real referee. It never reads anything the attack prints and never runs the
+ * attack inside `forge test` (where cheatcodes are live). Instead:
+ *
+ *   1. compile the candidate's attacker contract against the prepared project
+ *      (the PR's own contracts + forge-std) with ffi/fs disabled;
+ *   2. start a private anvil node — a fork of the configured provider at the
+ *      referee's block, or a fresh chain when there is no upstream;
+ *   3. deploy the target from the honest-user wallet (fresh chain) or use the
+ *      plan's on-fork address, then replay the plan's seed transactions as that
+ *      honest user;
+ *   4. deploy the attacker from a second wallet and call attack() with the stake
+ *      as a real transaction, where the cheatcode precompile is a codeless address;
+ *   5. measure the attacker's and the target's balances on chain before and after.
+ *
+ * The vote is `moved` only when the measured balances show value leaving the
+ * target and landing with the attacker above the threshold (theftFromTarget).
  */
 export class FoundryRefereeEngine implements RefereeEngine {
   async run(input: RefereeInput): Promise<RefereeRun> {
@@ -50,44 +81,40 @@ export class FoundryRefereeEngine implements RefereeEngine {
       finishedAt: null,
       error: null,
     };
+    const fail = (outcome: RefereeRun['outcome'], error: string): RefereeRun =>
+      ({ ...base, outcome, finishedAt: now(), error });
 
-    const { cleaned } = stripForReferee(input.candidate.forgeTest);
-
-    // Defense in depth for the plain-transactions rule, checked before anything
-    // else: never run code the stripper could not fully clean. A cheat split
-    // across lines cannot be pinned to a single line and so survives
-    // stripForReferee; rather than run it on the fork with the cheat active, the
-    // referee refuses. An error run is not a valid vote, so a cheat-bearing
-    // candidate detected here can never reach a red verdict.
-    //
-    // This is NOT the whole guarantee. scanCheats is a source-text scanner and
-    // can be evaded by cheat access that leaves no literal token (see the SECURITY
-    // note in cheatcodes.ts). The trustworthy isolation is execution-level: running
-    // the attack as broadcast transactions where the cheatcode precompile is inert.
-    // That engine now exists and is proven in `broadcast.ts` (runBroadcastExploit);
-    // swapping this forge-test measurement over to it is tracked in SECURITY.md.
-    if (scanCheats(cleaned).hasForbidden) {
-      return { ...base, outcome: 'error', finishedAt: now(), error: 'forbidden cheat survived stripping; referee refuses cheat-bearing run' };
+    // Defense in depth for the plain-transactions rule. Cheats are inert on the
+    // node anyway, but an attack that leans on one is by definition not a plain
+    // transaction, so it is refused rather than run. An error is not a valid vote.
+    if (scanCheats(input.candidate.forgeTest).hasForbidden) {
+      return fail('error', 'attack source uses a forbidden cheat; referee refuses cheat-bearing run');
     }
+
+    const parsedPlan = ExploitPlan.safeParse(input.candidate.plan);
+    if (!parsedPlan.success) {
+      return fail('error', 'candidate has no runnable exploit plan (deployable attacker required)');
+    }
+    const plan = parsedPlan.data;
+    const planProblem = seedPlanProblem(plan);
+    if (planProblem) return fail('error', planProblem);
 
     const foundry = await detectFoundry();
-    if (!foundry.available) {
-      return { ...base, outcome: 'build-failed', finishedAt: now(), error: 'foundry not installed' };
-    }
-    if (!input.projectDir) {
-      return { ...base, outcome: 'error', finishedAt: now(), error: 'no prepared project dir' };
+    if (!foundry.available) return fail('build-failed', 'foundry not installed');
+    if (!input.projectDir) return fail('error', 'no prepared project dir');
+    if (input.forkUrl && !plan.targetAddress) {
+      return fail('error', 'fork referee needs the deployed target address');
     }
 
-    const testName = `Redline_${input.refereeName}`;
-    // Each referee runs in its own throwaway working dir that shares the prepared
-    // base project's src/ and lib/ (forge-std) by symlink but holds only this
-    // referee's test. Concurrent referees then never compile or clobber each
-    // other's attack files, and a compile error in one cannot fail the others.
+    // Each referee compiles in its own throwaway working dir that shares the
+    // prepared project's src/ and lib/ (forge-std) by symlink but holds only this
+    // referee's attacker. Concurrent referees never clobber each other's files.
     let runDir: string | null = null;
+    let node: AnvilHandle | null = null;
     try {
       runDir = await mkdtemp(join(tmpdir(), 'redline-run-'));
-      // Write the hardened config directly (ffi off, no fs access) rather than
-      // copying the base's, so the blast-radius floor is guaranteed for every run.
+      // The hardened config is written directly (ffi off, no fs access) rather than
+      // copied, so the blast-radius floor is guaranteed for every run.
       await writeFile(join(runDir, 'foundry.toml'), FOUNDRY_TOML, 'utf8');
       for (const sub of ['src', 'lib']) {
         const from = join(input.projectDir, sub);
@@ -98,47 +125,77 @@ export class FoundryRefereeEngine implements RefereeEngine {
           await cp(from, join(runDir, sub), { recursive: true });
         }
       }
-      const dir = join(runDir, 'test');
-      await mkdir(dir, { recursive: true });
-      const wrapped = wrapTest(input.candidate, cleaned, input.candidate.targetContract);
-      await writeFile(join(dir, `${testName}.t.sol`), wrapped, 'utf8');
+      const attackDir = join(runDir, 'test');
+      await mkdir(attackDir, { recursive: true });
+      await writeFile(join(attackDir, `Redline_${input.refereeName.replace(/[^A-Za-z0-9_]/g, '_')}.sol`), input.candidate.forgeTest, 'utf8');
 
-      const result = await forgeTest({
-        projectDir: runDir,
-        matchTest: 'test',
-        forkUrl: input.forkUrl,
-        forkBlock: input.forkBlock,
-        timeoutMs: 180_000,
-      });
+      try {
+        await forgeBuild({ projectDir: runDir });
+      } catch (err) {
+        return fail('build-failed', String(err).slice(0, 300));
+      }
+      let attackerBytecode: string;
+      try {
+        attackerBytecode = await readArtifactBytecode(runDir, plan.attackerContract);
+      } catch (err) {
+        return fail('build-failed', String(err).slice(0, 300));
+      }
 
-      if (result.passed) {
-        // The test passing is necessary but not sufficient: the council votes on the
-        // FACT that value met the threshold, measured from the attack's own emitted
-        // net. A pass that moves nothing (or below threshold) is NOT a theft.
-        const parsed = parseNet(result.raw);
-        const net = parsed ?? '0';
-        const delta: BalanceDelta = {
-          token: 'native',
-          attackerBefore: '0',
-          attackerAfter: net,
-          targetBefore: net,
-          targetAfter: '0',
-          attackerNetOfGas: net,
-        };
-        const moved = attackerGained([delta], input.thresholdWei);
-        if (moved) {
-          return { ...base, outcome: 'moved', deltas: [delta], finishedAt: now(), traceRef: `forge://${testName}` };
+      node = input.forkUrl
+        ? await startFork({ forkUrl: input.forkUrl, block: input.forkBlock || undefined })
+        : await startAnvil();
+      const honest = ANVIL_ACCOUNTS[1]!;
+
+      // The target: on a fork it already exists; on a fresh chain the honest wallet
+      // deploys the contract under review from the prepared project's own build.
+      let targetAddress: string;
+      if (input.forkUrl) {
+        targetAddress = plan.targetAddress!;
+      } else {
+        let targetBytecode: string;
+        try {
+          targetBytecode = await readArtifactBytecode(runDir, input.candidate.targetContract);
+        } catch (err) {
+          return fail('build-failed', String(err).slice(0, 300));
         }
-        // Passed, but no value at or above the threshold actually moved.
-        return { ...base, outcome: 'did-not-move', deltas: [delta], finishedAt: now(), traceRef: `forge://${testName}` };
+        targetAddress = await castDeploy({
+          rpcUrl: node.rpcUrl,
+          privateKey: honest.privateKey,
+          bytecode: targetBytecode,
+          constructorSig: plan.targetConstructorSig ?? undefined,
+          constructorArgs: plan.targetConstructorArgs,
+          valueWei: plan.targetDeployValueWei,
+        });
       }
-      if (/compil|parser|error\[/i.test(result.raw)) {
-        return { ...base, outcome: 'build-failed', finishedAt: now(), error: 'compile error' };
+
+      // Seed: honest-user transactions to the target, from the honest wallet only.
+      for (const step of plan.seed) {
+        const res = await castSend({
+          rpcUrl: node.rpcUrl, privateKey: honest.privateKey, to: targetAddress,
+          sig: step.sig, args: step.args, valueWei: step.valueWei,
+        });
+        if (!res.status) return fail('error', `seed step reverted: ${step.sig}`);
       }
-      return { ...base, outcome: 'did-not-move', finishedAt: now() };
+
+      const run = await runBroadcastExploit({
+        rpcUrl: node.rpcUrl,
+        targetAddress,
+        attackerBytecode,
+        constructorSig: 'constructor(address)',
+        constructorArgs: [targetAddress],
+        entrypoint: 'attack()',
+        stakeWei: plan.stakeWei,
+        thresholdWei: input.thresholdWei,
+        refereeName: input.refereeName,
+        provider: input.provider,
+        candidateId: input.candidate.id,
+        forkBlock: node.block,
+      });
+      return { ...run, startedAt: base.startedAt };
     } catch (err) {
-      return { ...base, outcome: 'error', finishedAt: now(), error: String(err).slice(0, 300) };
+      return fail('error', String(err).slice(0, 300));
     } finally {
+      if (node) await node.stop().catch(() => undefined);
       if (runDir) await rm(runDir, { recursive: true, force: true }).catch(() => undefined);
     }
   }

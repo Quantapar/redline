@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Icon } from '@/components/icon';
 import { Target01Icon } from '@hugeicons/core-free-icons';
+import { csrfHeaders } from '@/lib/csrf-client';
 
 export function RunScanButton({ repoId, label = 'Run a scan' }: { repoId?: string; label?: string }) {
   const router = useRouter();
@@ -16,7 +17,7 @@ export function RunScanButton({ repoId, label = 'Run a scan' }: { repoId?: strin
     try {
       const res = await fetch('/api/scans/run', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: csrfHeaders({ 'content-type': 'application/json' }),
         body: JSON.stringify({ repoId }),
       });
       const data = await res.json();

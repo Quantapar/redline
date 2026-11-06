@@ -11,6 +11,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { SCAN_STATUS_LABEL } from '@/lib/format';
 import { describeScanEvent } from '@/lib/scan-event-line';
+import { csrfHeaders } from '@/lib/csrf-client';
 
 type Ev = Record<string, unknown> & { type: string; at: string };
 
@@ -120,7 +121,7 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
               variant="ghost"
               onClick={async () => {
                 try {
-                  const res = await fetch(`/api/scans/${scanId}/cancel`, { method: 'POST' });
+                  const res = await fetch(`/api/scans/${scanId}/cancel`, { method: 'POST', headers: csrfHeaders() });
                   if (res.ok) {
                     setStatus('cancelled');
                     setDone(true);

@@ -8,10 +8,13 @@ AI is creative but unreliable, and will cheat to look successful. Redline separa
 - **Hunters** (the swarm) may use any shortcut while searching for weak spots. They
   produce *candidates*: hypotheses with a proof-of-concept attack. A candidate is an
   opinion until it is reproduced.
-- **Referees** decide the verdict by running the attack for real. The hunter's
-  cheat shortcuts are stripped: the attack is reduced to plain transactions from one
-  ordinary wallet funded only for gas, on a fresh fork. If the money moves, it is a
-  bug; if not, no alarm.
+- **Referees** decide the verdict by running the attack for real, as broadcast
+  transactions from an ordinary funded wallet against an anvil node (a fork, or a
+  fresh chain with the contract under review deployed). The cheatcode precompile is a
+  codeless no-op there, so cheat shortcuts fabricate nothing. The verdict comes only
+  from measured balances — value must leave the target and land with the attacker —
+  never from anything the attack prints. If the money moves, it is a bug; if not, no
+  alarm.
 
 ## The referee council
 
@@ -59,9 +62,12 @@ changed (call-graph-connected expansion is planned). A hard per-scan budget cap
   Cheap models run first across all targets; stronger tiers come in only where they stall. Every
   call is reserved against a hard per-scan budget before it is made. Sensitive attack-writing can
   route through the router's private/TEE mode.
-- **Engine** (`packages/engine`) — sealed-room sandbox, the cheatcode stripper (so referees run
-  plain transactions), Foundry fork + forge-test orchestration, Slither/Aderyn wrappers that
-  degrade gracefully, and both a real and a simulated referee behind one interface.
+- **Engine** (`packages/engine`) — the real referee runs each candidate as broadcast transactions
+  against an anvil node and measures the theft from on-chain balances (`broadcast.ts`,
+  `foundry-referee.ts`); the cheatcode stripper and a scrubbed toolchain environment are
+  defense-in-depth on top. Slither/Aderyn wrappers degrade gracefully. A deterministic simulation
+  referee sits behind the same interface for offline dev, CI and the demo, and is opt-in only —
+  `createRefereeEngine` fails closed (no silent simulation fallback) when Foundry is absent.
 - **Pipeline** (`packages/worker`) — a BullMQ queue so scans run in order and big customers do not
   block small ones. `runScan` chains prepare → hunt → verify → judge and persists everything, one
   bad candidate never sinking the whole scan. `watch-mode` turns a new hack into a recipe and

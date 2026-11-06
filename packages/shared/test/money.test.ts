@@ -94,3 +94,51 @@ describe('money — the fact the council votes on', () => {
     expect(deltaIsConsistent({ ...d, attackerNetOfGas: '100' })).toBe(true);
   });
 });
+
+import { theftFromTarget, auditRun } from '../src/consensus/money.js';
+import type { RefereeRun } from '../src/domain/referee.js';
+
+describe('theftFromTarget — value must leave the target AND land with the attacker', () => {
+  const d = (gain: string, before: string, after: string, token = 'native') => ({
+    token, attackerBefore: '0', attackerAfter: gain, targetBefore: before, targetAfter: after, attackerNetOfGas: gain,
+  });
+  it('is a theft when both sides of the measurement meet the threshold', () => {
+    expect(theftFromTarget([d('100', '100', '0')], '100')).toBe(true);
+  });
+  it('is NOT a theft when the attacker gained but the target lost nothing (funded from elsewhere)', () => {
+    expect(theftFromTarget([d('100', '100', '100')], '100')).toBe(false);
+  });
+  it('is NOT a theft when the target lost but the attacker did not gain', () => {
+    expect(theftFromTarget([d('0', '100', '0')], '100')).toBe(false);
+  });
+  it('enforces the threshold on both sides and refuses a non-positive threshold', () => {
+    expect(theftFromTarget([d('99', '100', '0')], '100')).toBe(false);
+    expect(theftFromTarget([d('100', '99', '0')], '100')).toBe(false);
+    expect(() => theftFromTarget([d('1', '1', '0')], '0')).toThrow();
+  });
+});
+
+describe('auditRun — a moved vote must be backed by measured deltas that add up', () => {
+  const run = (outcome: RefereeRun['outcome'], deltas: RefereeRun['deltas']): RefereeRun => ({
+    id: 'r', candidateId: 'c', refereeName: 'a', provider: 'p', forkBlock: 0, outcome, thresholdWei: '1',
+    deltas, traceRef: null, logsRef: null, startedAt: '', finishedAt: null, error: null,
+  });
+  it('demotes moved-with-no-deltas to an error (never a valid vote)', () => {
+    expect(auditRun(run('moved', [])).outcome).toBe('error');
+  });
+  it('demotes moved whose reported net the balances do not support (a fabricated delta)', () => {
+    const fake = { token: 'native', attackerBefore: '0', attackerAfter: '0', targetBefore: '0', targetAfter: '0', attackerNetOfGas: '1000000' };
+    const out = auditRun(run('moved', [fake]));
+    expect(out.outcome).toBe('error');
+    expect(out.error).toMatch(/inconsistent/);
+  });
+  it('demotes moved whose delta holds malformed numbers', () => {
+    const bad = { token: 'native', attackerBefore: 'x', attackerAfter: '5', targetBefore: '5', targetAfter: '0', attackerNetOfGas: '5' };
+    expect(auditRun(run('moved', [bad])).outcome).toBe('error');
+  });
+  it('leaves a consistent moved vote, and every non-moved vote, untouched', () => {
+    const ok = { token: 'native', attackerBefore: '1', attackerAfter: '6', targetBefore: '5', targetAfter: '0', attackerNetOfGas: '5' };
+    expect(auditRun(run('moved', [ok])).outcome).toBe('moved');
+    expect(auditRun(run('did-not-move', [])).outcome).toBe('did-not-move');
+  });
+});

@@ -81,3 +81,43 @@ describe('sameOrigin (CSRF guard)', () => {
     expect(sameOrigin(req())).toBeNull();
   });
 });
+
+import { requireMutationAuth, issueMutationToken } from '../lib/auth';
+
+describe('requireMutationAuth (closes the no-Origin curl hole)', () => {
+  const origEnv = process.env.NODE_ENV;
+  afterEach(() => {
+    delete process.env.REDLINE_ADMIN_TOKEN;
+    delete process.env.REDLINE_MUTATION_SECRET;
+    (process.env as Record<string, string | undefined>).NODE_ENV = origEnv;
+  });
+  const req = (headers: Record<string, string> = {}) => new Request('http://x.test/api', { method: 'POST', headers });
+
+  it('rejects a blind request with no Origin and no token (the old hole)', () => {
+    expect(requireMutationAuth(req())?.status).toBe(403);
+  });
+  it('rejects a cross-origin request', () => {
+    expect(requireMutationAuth(req({ origin: 'http://evil.test' }))?.status).toBe(403);
+  });
+  it('allows a request carrying a freshly minted token', () => {
+    expect(requireMutationAuth(req({ 'x-redline-csrf': issueMutationToken() }))).toBeNull();
+  });
+  it('rejects an expired token', () => {
+    const expired = issueMutationToken(Date.now() - 3 * 60 * 60 * 1000); // minted 3h ago, 2h TTL
+    expect(requireMutationAuth(req({ 'x-redline-csrf': expired }))?.status).toBe(403);
+  });
+  it('rejects a token signed with the wrong secret', () => {
+    process.env.REDLINE_MUTATION_SECRET = 'A';
+    const token = issueMutationToken();
+    process.env.REDLINE_MUTATION_SECRET = 'B';
+    expect(requireMutationAuth(req({ 'x-redline-csrf': token }))?.status).toBe(403);
+  });
+  it('still honours a configured admin bearer token', () => {
+    process.env.REDLINE_ADMIN_TOKEN = 'ops';
+    expect(requireMutationAuth(req({ authorization: 'Bearer ops' }))).toBeNull();
+  });
+  it('FAILS CLOSED in production when no secret is configured', () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+    expect(() => issueMutationToken()).toThrow(/required in production/);
+  });
+});

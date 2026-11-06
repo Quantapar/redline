@@ -7,6 +7,7 @@ import { CodeBlock } from '@/components/ui/code-block';
 import { Spinner } from '@/components/ui/spinner';
 import { Icon } from '@/components/icon';
 import { FlashIcon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
+import { csrfHeaders } from '@/lib/csrf-client';
 
 type FixData = { explanation: string; diff: string; branch: string; model?: string };
 
@@ -22,7 +23,7 @@ export function FixItButton({ findingId }: { findingId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/findings/${findingId}/fix`, { method: 'POST' });
+      const res = await fetch(`/api/findings/${findingId}/fix`, { method: 'POST', headers: csrfHeaders() });
       const data = await res.json();
       if (!res.ok) setError(data.error ?? 'Could not generate a fix.');
       else setFix(data);

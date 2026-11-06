@@ -1,14 +1,26 @@
 import { Queue } from 'bullmq';
 import { createRedis } from './connection.js';
 
-export const SCAN_QUEUE = 'redline-scans';
+/**
+ * The BullMQ queue name. Overridable via REDLINE_SCAN_QUEUE so an environment can
+ * isolate its own line — most importantly so a test run never shares a queue with
+ * a long-running dev worker (which would silently consume the test's jobs against
+ * the wrong database). Read at call time so a process can set the env before it
+ * creates the queue or worker.
+ */
+export function scanQueueName(): string {
+  return process.env.REDLINE_SCAN_QUEUE ?? 'redline-scans';
+}
+
+/** Back-compat constant for consumers that read the name once at startup. */
+export const SCAN_QUEUE = scanQueueName();
 
 export interface ScanJobData {
   scanId: string;
 }
 
 export function createScanQueue(): Queue<ScanJobData> {
-  return new Queue<ScanJobData>(SCAN_QUEUE, { connection: createRedis() });
+  return new Queue<ScanJobData>(scanQueueName(), { connection: createRedis() });
 }
 
 /**

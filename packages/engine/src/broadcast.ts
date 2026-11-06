@@ -1,7 +1,7 @@
 import { existsSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, normalize, relative, sep } from 'node:path';
 import type { BalanceDelta, RefereeRun } from '@redline/shared';
-import { attackerGained } from '@redline/shared';
+import { theftFromTarget } from '@redline/shared';
 import { castBalance, castDeploy, castSend, ANVIL_ACCOUNTS } from './foundry.js';
 
 /** Is `child` the same as, or contained within, `parent`? (lexical) */
@@ -58,6 +58,8 @@ export function safeProjectPath(projectDir: string, relFile: string): string {
 export interface BroadcastExploitInput {
   /** a running anvil node (fresh chain or a fork) */
   rpcUrl: string;
+  /** the contract under review, already deployed on the node; its balance is measured too */
+  targetAddress: string;
   /** creation bytecode of the attacker contract (from forgeBuildArtifact) */
   attackerBytecode: string;
   /** optional constructor, e.g. sig 'constructor(address)' + [targetAddress] */
@@ -87,13 +89,14 @@ export interface BroadcastExploitInput {
  * cheatcode precompile (0x7109...12d) hits a codeless address and is an inert
  * no-op. An attacker cannot vm.deal itself funds, vm.store a balance, or vm.prank
  * another account — the only way its balance grows is by actually moving value on
- * chain. Net theft is measured from the attacker contract's real balance, so a
- * faked exploit nets zero and is reported did-not-move, never moved.
+ * chain. Net theft is measured from the attacker contract's real balance AND the
+ * target's real balance, so a faked exploit nets zero and is reported
+ * did-not-move, never moved. Nothing the attack prints is read.
  */
 export async function runBroadcastExploit(input: BroadcastExploitInput): Promise<RefereeRun> {
   const now = () => new Date().toISOString();
   const attackerEoa = ANVIL_ACCOUNTS[0]!;
-  const stake = input.stakeWei ?? '0';
+  const stake = BigInt(input.stakeWei ?? '0');
   const base: RefereeRun = {
     id: `${input.candidateId}:${input.refereeName}`,
     candidateId: input.candidateId,
@@ -109,6 +112,9 @@ export async function runBroadcastExploit(input: BroadcastExploitInput): Promise
     finishedAt: null,
     error: null,
   };
+  if (!/^0x[0-9a-fA-F]{40}$/.test(input.targetAddress)) {
+    return { ...base, outcome: 'error', finishedAt: now(), error: 'invalid target address' };
+  }
 
   try {
     // 1. Deploy the attacker as real creation code from the funded EOA.
@@ -121,9 +127,12 @@ export async function runBroadcastExploit(input: BroadcastExploitInput): Promise
       bin: input.bin,
     });
 
-    // 2. The attacker contract starts from zero; the stake is supplied as msg.value
-    //    on the attack call, so its gain is measured as (final balance - stake).
-    const before = BigInt(await castBalance(input.rpcUrl, attacker, input.bin));
+    // 2. Measure both sides before the attack. The attacker's "before" INCLUDES the
+    //    stake it is about to send, so after - before is exactly its net gain and the
+    //    recorded delta is self-consistent (deltaIsConsistent) with no tolerance.
+    const attackerHeld = BigInt(await castBalance(input.rpcUrl, attacker, input.bin));
+    const attackerBefore = attackerHeld + stake;
+    const targetBefore = BigInt(await castBalance(input.rpcUrl, input.targetAddress, input.bin));
 
     // 3. Run the attack as a real transaction. A revert is a non-exploit, not an error.
     const res = await castSend({
@@ -132,25 +141,25 @@ export async function runBroadcastExploit(input: BroadcastExploitInput): Promise
       to: attacker,
       sig: input.entrypoint ?? 'attack()',
       args: input.entrypointArgs,
-      valueWei: stake,
+      valueWei: stake.toString(),
       bin: input.bin,
     });
 
-    const after = BigInt(await castBalance(input.rpcUrl, attacker, input.bin));
-    // Net theft = what the attacker contract holds now, minus what it held before
-    // the attack (normally 0, but a forked CREATE address could pre-hold value) and
-    // minus its own staked msg.value. Gas is paid by the EOA, not the contract, so
-    // the contract balance is already net of gas for the stolen funds. Subtracting
-    // `before` keeps this consistent with deltaIsConsistent (after - before).
-    const theft = after - before - BigInt(stake);
+    // 4. Measure again. Gas is paid by the EOA, not the contract, so the contract
+    //    balance is already net of gas. A reverted attack still consumed nothing from
+    //    the contract (the stake bounced with the revert), and the measurement shows it.
+    const attackerAfter = BigInt(await castBalance(input.rpcUrl, attacker, input.bin));
+    const targetAfter = BigInt(await castBalance(input.rpcUrl, input.targetAddress, input.bin));
+    // On a revert the stake never left the EOA, so the attacker "put in" nothing.
+    const effectiveBefore = res.status ? attackerBefore : attackerHeld;
 
     const delta: BalanceDelta = {
       token: 'native',
-      attackerBefore: before.toString(),
-      attackerAfter: after.toString(),
-      targetBefore: '0',
-      targetAfter: '0',
-      attackerNetOfGas: (theft > 0n ? theft : 0n).toString(),
+      attackerBefore: effectiveBefore.toString(),
+      attackerAfter: attackerAfter.toString(),
+      targetBefore: targetBefore.toString(),
+      targetAfter: targetAfter.toString(),
+      attackerNetOfGas: (attackerAfter - effectiveBefore).toString(),
     };
 
     if (!res.status) {
@@ -158,7 +167,7 @@ export async function runBroadcastExploit(input: BroadcastExploitInput): Promise
       return { ...base, outcome: 'did-not-move', deltas: [delta], finishedAt: now(), traceRef: `anvil://${attacker}` };
     }
 
-    const moved = attackerGained([delta], input.thresholdWei);
+    const moved = theftFromTarget([delta], input.thresholdWei);
     return {
       ...base,
       outcome: moved ? 'moved' : 'did-not-move',

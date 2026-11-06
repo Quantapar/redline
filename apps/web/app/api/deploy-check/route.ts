@@ -45,10 +45,27 @@ export async function GET(req: Request) {
     .where(and(eq(schema.findings.scanId, scan.id), eq(schema.findings.isRed, true), ne(schema.findings.status, 'resolved')));
   const unresolvedRed = Number(open?.n ?? 0);
 
+  // The gate must fail CLOSED: a deploy is allowed only when the council actually
+  // reached a decisive verdict on every candidate. Count the candidates and the
+  // decisive findings; if any candidate produced no finding, or a finding is
+  // 'inconclusive' (not enough valid referee runs), the council did NOT complete,
+  // so `canDeploy` will refuse rather than wave an unverified version through.
+  const [cand] = await d
+    .select({ n: sql<number>`count(*)` })
+    .from(schema.candidates)
+    .where(eq(schema.candidates.scanId, scan.id));
+  const [dec] = await d
+    .select({ n: sql<number>`count(*)` })
+    .from(schema.findings)
+    .where(and(eq(schema.findings.scanId, scan.id), ne(schema.findings.consensus, 'inconclusive')));
+  const candidateCount = Number(cand?.n ?? 0);
+  const decisiveCount = Number(dec?.n ?? 0);
+  const councilComplete = decisiveCount >= candidateCount;
+
   const attestation = buildAttestation({
     versionHash: scan.commitSha,
     redFindingCount: unresolvedRed,
-    councilComplete: true,
+    councilComplete,
     issuer: COUNCIL_KEY,
   });
   const decision = canDeploy({ candidateVersionHash: version, attestation, councilKeys: [COUNCIL_KEY] });

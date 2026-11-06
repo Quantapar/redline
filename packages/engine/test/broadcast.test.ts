@@ -144,6 +144,7 @@ describe('broadcast referee — attacks run as real transactions, cheats are ine
     const { bytecode: attackerCode } = await forgeBuildArtifact({ projectDir: project, contractName: 'ReentrancyAttacker' });
     const run = await runBroadcastExploit({
       rpcUrl,
+      targetAddress: vault,
       attackerBytecode: attackerCode,
       constructorSig: 'constructor(address)',
       constructorArgs: [vault],
@@ -153,8 +154,12 @@ describe('broadcast referee — attacks run as real transactions, cheats are ine
     });
 
     expect(run.outcome).toBe('moved');
-    // Stole the honest depositor's 10 ETH (net of its own returned stake).
-    expect(BigInt(run.deltas[0]!.attackerNetOfGas)).toBeGreaterThanOrEqual(9n * 10n ** 18n);
+    // Stole the honest depositor's 10 ETH (net of its own returned stake), and the
+    // vault's measured balance dropped by the same amount: the delta adds up.
+    const d = run.deltas[0]!;
+    expect(BigInt(d.attackerNetOfGas)).toBeGreaterThanOrEqual(9n * 10n ** 18n);
+    expect(BigInt(d.targetBefore) - BigInt(d.targetAfter)).toBeGreaterThanOrEqual(10n * 10n ** 18n);
+    expect(BigInt(d.attackerAfter) - BigInt(d.attackerBefore)).toBe(BigInt(d.attackerNetOfGas));
   }, 120_000);
 
   it.skipIf(!hasFoundry)('a cheatcode-based fake attack nets zero — the precompile is inert', async () => {
@@ -162,6 +167,7 @@ describe('broadcast referee — attacks run as real transactions, cheats are ine
     const { bytecode: cheatCode } = await forgeBuildArtifact({ projectDir: project, contractName: 'CheatAttacker' });
     const run = await runBroadcastExploit({
       rpcUrl,
+      targetAddress: '0x0000000000000000000000000000000000000001',
       attackerBytecode: cheatCode,
       constructorSig: 'constructor(address)',
       constructorArgs: ['0x0000000000000000000000000000000000000000'],
@@ -182,6 +188,7 @@ describe('broadcast referee — attacks run as real transactions, cheats are ine
     // args so the attacker self-funds from its 10,000-ETH EOA and registers as theft.
     const run = await runBroadcastExploit({
       rpcUrl,
+      targetAddress: '0x0000000000000000000000000000000000000001',
       attackerBytecode: cheatCode,
       constructorSig: 'constructor(address)',
       constructorArgs: ['0x0000000000000000000000000000000000000000'],
