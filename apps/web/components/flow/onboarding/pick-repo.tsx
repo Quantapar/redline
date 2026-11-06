@@ -139,7 +139,7 @@ export function PickRepo({
       <StepHeading title="Which repository should we attack?">
         {load.state === "ready"
           ? repos.length
-            ? `${name} has ${load.partial ? "over " : ""}${repos.length} ${repos.length === 1 ? "repository" : "repositories"}. Solidity ones come first.`
+            ? null
             : `${name} has no public repositories of their own yet.`
           : `Fetching ${name}’s repositories from GitHub.`}
       </StepHeading>

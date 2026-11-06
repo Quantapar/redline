@@ -90,7 +90,8 @@ export function StepHeading({
 }) {
   return (
     <div className="text-center">
-      <h1 className={hero ? HERO_HEADING : HEADING}>{title}</h1>
+      {/* Step titles reach past the 520px column on wider screens, so they stay on one line */}
+      <h1 className={hero ? HERO_HEADING : `${HEADING} sm:-mx-24`}>{title}</h1>
       {children && (
         <p className="mx-auto mt-3 max-w-[440px] text-[17px] leading-[1.5] text-ink-2 text-pretty">{children}</p>
       )}
