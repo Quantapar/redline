@@ -96,11 +96,11 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
           const state = i < activeStage || status === 'complete' ? 'done' : i === activeStage ? 'active' : 'pending';
           return (
             <div key={s.key} className="flex flex-1 items-center gap-1.5">
-              <div className={`flex size-7 items-center justify-center rounded-full border ${state === 'done' ? 'border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]' : state === 'active' ? 'border-foreground/30 bg-muted text-foreground' : 'border-border text-muted-foreground'}`}>
+              <div className={`flex size-7 items-center justify-center rounded-full border transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${state === 'done' ? 'border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]' : state === 'active' ? 'border-foreground/30 bg-muted text-foreground' : 'border-border text-muted-foreground'}`}>
                 <Icon icon={s.icon} size={14} />
               </div>
               <span className={`text-[11px] ${state === 'pending' ? 'text-muted-foreground' : 'text-foreground'}`}>{s.label}</span>
-              {i < STAGES.length - 1 ? <div className={`h-px flex-1 ${i < activeStage || status === 'complete' ? 'bg-[var(--success)]/40' : 'bg-border'}`} /> : null}
+              {i < STAGES.length - 1 ? <div className={`h-px flex-1 transition-colors duration-200 ${i < activeStage || status === 'complete' ? 'bg-[var(--success)]/40' : 'bg-border'}`} /> : null}
             </div>
           );
         })}
