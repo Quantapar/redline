@@ -60,6 +60,17 @@ describe('reportAreas', () => {
   });
 });
 
+describe('reportAreas counts', () => {
+  it('counts only reproduced findings as having moved funds', () => {
+    // one proven theft and one unconfirmed finding of the same class
+    const [area] = reportAreas(
+      [{ weaknessClass: 'reentrancy' }],
+      [f({}), f({ id: 'x', isRed: false, consensus: 'inconclusive', agreementCount: 0, refereeCount: 0 })],
+    );
+    expect(area).toMatchObject({ weaknessClass: 'reentrancy', verdict: 'red', findings: 2, reproduced: 1, unreplayed: 1 });
+  });
+});
+
 describe('fixOrder', () => {
   it('keeps only what needs fixing, reproduced and severe first', () => {
     const out = fixOrder([

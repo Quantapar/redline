@@ -34,6 +34,8 @@ export interface ReportArea {
   findings: number;
   /** Of those, how many no referee managed to replay (unconfirmed, not "shaky"). */
   unreplayed?: number;
+  /** Of those, how many the council reproduced (money moved). */
+  reproduced?: number;
 }
 
 /** What a finding counts as: reproduced, shaky, or nothing proven. */
@@ -86,13 +88,14 @@ export function reportAreas(
 ): ReportArea[] {
   const areas = new Map<string, ReportArea>();
   for (const c of attacked) {
-    if (!areas.has(c.weaknessClass)) areas.set(c.weaknessClass, { weaknessClass: c.weaknessClass, verdict: 'ok', findings: 0, unreplayed: 0 });
+    if (!areas.has(c.weaknessClass)) areas.set(c.weaknessClass, { weaknessClass: c.weaknessClass, verdict: 'ok', findings: 0, unreplayed: 0, reproduced: 0 });
   }
   for (const f of findings) {
-    const a = areas.get(f.weaknessClass) ?? { weaknessClass: f.weaknessClass, verdict: 'ok' as Verdict, findings: 0, unreplayed: 0 };
+    const a = areas.get(f.weaknessClass) ?? { weaknessClass: f.weaknessClass, verdict: 'ok' as Verdict, findings: 0, unreplayed: 0, reproduced: 0 };
     const v = findingVerdict(f);
     if (RANK[v] < RANK[a.verdict]) a.verdict = v;
     a.findings += 1;
+    if (f.isRed) a.reproduced = (a.reproduced ?? 0) + 1;
     if (f.refereeCount !== undefined && isUnreplayed({ isRed: f.isRed, refereeCount: f.refereeCount })) a.unreplayed = (a.unreplayed ?? 0) + 1;
     areas.set(f.weaknessClass, a);
   }

@@ -67,7 +67,11 @@ const VERDICT_BADGE: Record<Verdict, { label: string; variant: "destructive" | "
 };
 
 function areaDetail(a: ReportArea): string {
-  if (a.verdict === "red") return a.findings === 1 ? "an exploit moved funds" : `${a.findings} exploits moved funds`;
+  // Only reproduced thefts count here; an unconfirmed finding of the same class did not move funds
+  if (a.verdict === "red") {
+    const moved = a.reproduced ?? a.findings;
+    return moved === 1 ? "an exploit moved funds" : `${moved} exploits moved funds`;
+  }
   if (a.verdict === "warn") {
     return a.unreplayed && a.unreplayed === a.findings
       ? "flagged, but no referee could replay it yet"
