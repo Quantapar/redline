@@ -21,6 +21,15 @@ describe('optional toolchain degrades gracefully', () => {
     expect(Array.isArray(r.hits)).toBe(true);
   });
 
+  it('reports available:false when the binary is not installed (ENOENT), not a silent true', async () => {
+    const s = await runSlither(tmpdir(), 'slither-not-installed-xyz');
+    expect(s.available).toBe(false);
+    expect(s.hits).toEqual([]);
+    const a = await runAderyn(tmpdir(), 'aderyn-not-installed-xyz');
+    expect(a.available).toBe(false);
+    expect(a.hits).toEqual([]);
+  });
+
   it('detectFoundry reports availability without throwing', async () => {
     const f = await detectFoundry();
     expect(typeof f.available).toBe('boolean');

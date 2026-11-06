@@ -19,17 +19,22 @@ const SLITHER_TO_CLASS: Record<string, WeaknessClass> = {
 };
 
 /** Run Slither if available; parse detectors into focus hits. Never throws. */
-export async function runSlither(projectDir: string): Promise<AnalyzerResult> {
+export async function runSlither(projectDir: string, bin = 'slither'): Promise<AnalyzerResult> {
+  let stdout = '';
   try {
-    const { stdout } = await pexec('slither', [projectDir, '--json', '-'], {
-      timeout: 120_000,
-      maxBuffer: 64 * 1024 * 1024,
-    }).catch((e: { stdout?: string }) => ({ stdout: e.stdout ?? '' }));
-    const hits = parseSlitherJson(stdout);
-    return { tool: 'slither', available: true, hits, raw: stdout.slice(0, 20_000) };
-  } catch {
-    return { tool: 'slither', available: false, hits: [], raw: '' };
+    const r = await pexec(bin, [projectDir, '--json', '-'], { timeout: 120_000, maxBuffer: 64 * 1024 * 1024 });
+    stdout = r.stdout;
+  } catch (e) {
+    const err = e as { stdout?: string; code?: unknown };
+    // ENOENT means Slither is not installed -> genuinely unavailable. A numeric exit
+    // code means it RAN and exited non-zero (it does that when it finds issues) but
+    // still printed JSON on stdout, which we parse. Previously both were conflated,
+    // so a missing Slither was wrongly reported as available with no findings.
+    if (err.code === 'ENOENT') return { tool: 'slither', available: false, hits: [], raw: '' };
+    stdout = err.stdout ?? '';
   }
+  const hits = parseSlitherJson(stdout);
+  return { tool: 'slither', available: true, hits, raw: stdout.slice(0, 20_000) };
 }
 
 /** Parse Slither's --json output into focus hits. Pure and testable. */

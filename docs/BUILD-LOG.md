@@ -713,3 +713,14 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   apps/web/.env.local and .next from the build context — no secrets reach the image.
 - Fixed one incorrectness: the worker Dockerfile had `EXPOSE 0` (meaningless — a queue
   consumer serves no HTTP). Removed it.
+
+## 2026-11-06 — analyzers correctly report unavailable when not installed
+
+- runSlither/runAderyn had an availability bug: when the tool was NOT installed,
+  execFile rejected with ENOENT, but the inner .catch swallowed it and the function
+  returned available:true with empty hits — the outer available:false path was
+  unreachable. So the system couldn't tell "ran, found nothing" from "not installed"
+  (matters once analyzers feed the hunt). Now ENOENT -> available:false, while a numeric
+  exit code (Slither/Aderyn exit non-zero when they find issues) still parses the output.
+  Added an optional bin param so the not-installed path is deterministically tested. +1 test.
+- Suite 251 green across 10 packages.

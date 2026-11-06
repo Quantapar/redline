@@ -6,22 +6,25 @@ import type { AnalyzerResult, AnalyzerHit } from './types.js';
 const pexec = promisify(execFile);
 
 /** Run Aderyn if available; parse its JSON report into focus hits. Never throws. */
-export async function runAderyn(projectDir: string): Promise<AnalyzerResult> {
+export async function runAderyn(projectDir: string, bin = 'aderyn'): Promise<AnalyzerResult> {
+  const out = join(projectDir, 'aderyn-report.json');
   try {
-    const out = join(projectDir, 'aderyn-report.json');
-    await pexec('aderyn', [projectDir, '-o', out], { timeout: 120_000 }).catch(() => undefined);
-    let raw = '';
-    const hits: AnalyzerHit[] = [];
-    try {
-      raw = await readFile(out, 'utf8');
-      hits.push(...parseAderynJson(raw));
-    } catch {
-      /* ignore */
-    }
-    return { tool: 'aderyn', available: true, hits, raw: raw.slice(0, 20_000) };
-  } catch {
-    return { tool: 'aderyn', available: false, hits: [], raw: '' };
+    await pexec(bin, [projectDir, '-o', out], { timeout: 120_000 });
+  } catch (e) {
+    // ENOENT means Aderyn is not installed -> genuinely unavailable. Any other error
+    // means it ran but failed; it may still have written a partial report, so fall
+    // through and try to read it. Previously a missing Aderyn was reported as available.
+    if ((e as { code?: unknown }).code === 'ENOENT') return { tool: 'aderyn', available: false, hits: [], raw: '' };
   }
+  let raw = '';
+  const hits: AnalyzerHit[] = [];
+  try {
+    raw = await readFile(out, 'utf8');
+    hits.push(...parseAderynJson(raw));
+  } catch {
+    /* no report written */
+  }
+  return { tool: 'aderyn', available: true, hits, raw: raw.slice(0, 20_000) };
 }
 
 /** Parse an Aderyn JSON report into focus hits. Pure and testable. */
