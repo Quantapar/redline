@@ -45,7 +45,7 @@ Usage:
   redline scan <dir>         hunt + council over a local Solidity project
                              [--budget <cents>] [--sim]
   redline verify-deploy      gate a deploy on the council's verdict for a version
-                             --repo <owner/repo> --version <sha> [--url <app url>]
+                             --repo <owner/repo> --version <sha> [--url <app url>] [--json]
 
 Your security policy is plain English. Redline reads it on every scan and flags
 anything that breaks it. No coding required.`;
@@ -65,6 +65,10 @@ export async function main(argv: string[]): Promise<number> {
     try {
       const res = await fetch(`${base}/api/deploy-check?repo=${encodeURIComponent(repo)}&version=${encodeURIComponent(version)}`);
       const data = await res.json() as { allowed: boolean; reason: string };
+      if (flags.json === 'true') {
+        console.log(JSON.stringify(data));
+        return data.allowed ? 0 : 2;
+      }
       if (data.allowed) {
         console.log(`\u2713 deploy allowed: ${data.reason}`);
         return 0;
