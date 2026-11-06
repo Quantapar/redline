@@ -2,6 +2,27 @@ import { and, desc, eq, ne, sql, decrypt } from '@redline/db';
 import { schema } from '@redline/db';
 import { db } from './db';
 
+/**
+ * Sum native value-at-risk across moved referee runs, counting each finding ONCE.
+ * A red finding has several moved runs (one per agreeing referee) reporting the
+ * same theft; counting them all would multiply the headline figure (a real bug we
+ * had before). Pure and unit-tested so that dedup can't silently regress.
+ */
+export function sumNativeAtRisk(rows: { findingId: string; deltas: unknown }[]): bigint {
+  let atRisk = 0n;
+  const counted = new Set<string>();
+  for (const r of rows) {
+    if (counted.has(r.findingId)) continue; // one moved run per finding
+    counted.add(r.findingId);
+    try {
+      for (const dlt of (r.deltas as { token: string; attackerNetOfGas: string }[]) ?? []) {
+        if (dlt.token === 'native') { atRisk += BigInt(dlt.attackerNetOfGas); break; }
+      }
+    } catch { /* skip a malformed delta set */ }
+  }
+  return atRisk;
+}
+
 export async function getStats() {
   const d = db();
   const [repos] = await d.select({ n: sql<number>`count(*)` }).from(schema.repositories);
@@ -21,17 +42,7 @@ export async function getStats() {
         eq(schema.refereeRuns.outcome, 'moved'),
       ),
     );
-  let atRisk = 0n;
-  const counted = new Set<string>();
-  for (const r of movedRuns) {
-    if (counted.has(r.findingId)) continue; // one moved run per finding
-    counted.add(r.findingId);
-    try {
-      for (const dlt of (r.deltas as { token: string; attackerNetOfGas: string }[]) ?? []) {
-        if (dlt.token === 'native') { atRisk += BigInt(dlt.attackerNetOfGas); break; }
-      }
-    } catch { /* skip */ }
-  }
+  const atRisk = sumNativeAtRisk(movedRuns);
 
   return {
     repos: Number(repos?.n ?? 0),

@@ -744,3 +744,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   long-running dev server (up through ~25 edits) was in a degraded HMR state, not a code
   regression. Restarted it; all 8 routes now return 200 and the demo data is intact
   (3 repos, 3 scans, 2 red, 2 forever-tests). No code change — the code was sound.
+
+## 2026-11-06 — protect the value-at-risk dedup with a unit test
+
+- The headline "value proven at risk" figure sums one native delta per RED finding.
+  A finding has several moved runs (one per agreeing referee); counting them all once
+  multiplied the figure — a real bug we fixed before (351 -> 108.5 ETH) but never pinned.
+  Extracted the dedup+sum into a pure sumNativeAtRisk() and unit-tested it: a finding with
+  three agreeing moved runs counts once (8 ETH not 18), native beats token deltas, and a
+  malformed/missing delta contributes zero. getStats re-verified to still return 108.5 ETH.
+  +4 tests. Suite 255 green.
