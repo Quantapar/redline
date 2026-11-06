@@ -24,11 +24,29 @@ export function requireAdmin(req: Request): NextResponse | null {
  * one does not. A direct non-browser client (no Origin) is allowed through —
  * the real defence for those is the session-auth layer (see ROADMAP).
  */
+/**
+ * The hosts a same-origin request may carry. Behind a reverse proxy or tunnel
+ * (e.g. Cloudflare), the request reaches the app as `localhost:3000` while the
+ * browser's Origin is the public hostname, so comparing Origin to the local host
+ * alone wrongly rejects legitimate same-origin requests. We therefore also accept
+ * the forwarded host the proxy sets, and an explicitly configured public origin.
+ * This only governs the Origin check; the HMAC CSRF token remains the real gate.
+ */
+function allowedHosts(req: Request): Set<string> {
+  const hosts = new Set<string>();
+  try { hosts.add(new URL(req.url).host); } catch { /* ignore */ }
+  const fwd = req.headers.get('x-forwarded-host');
+  if (fwd) for (const h of fwd.split(',')) hosts.add(h.trim());
+  const pub = process.env.REDLINE_PUBLIC_ORIGIN;
+  if (pub) { try { hosts.add(new URL(pub).host); } catch { /* ignore */ } }
+  return hosts;
+}
+
 export function sameOrigin(req: Request): NextResponse | null {
   const origin = req.headers.get('origin');
   if (!origin) return null; // non-browser client; no CSRF risk
   try {
-    if (new URL(origin).host !== new URL(req.url).host) {
+    if (!allowedHosts(req).has(new URL(origin).host)) {
       return NextResponse.json({ error: 'cross-origin request blocked' }, { status: 403 });
     }
   } catch {
@@ -107,11 +125,11 @@ export function requireMutationAuth(req: Request): NextResponse | null {
     const token = header.startsWith('Bearer ') ? header.slice(7) : '';
     if (token === expectedAdmin) return null;
   }
-  // Browser path: reject a cross-origin request outright.
+  // Browser path: reject a cross-origin request outright (proxy-aware; see allowedHosts).
   const origin = req.headers.get('origin');
   if (origin) {
     try {
-      if (new URL(origin).host !== new URL(req.url).host) {
+      if (!allowedHosts(req).has(new URL(origin).host)) {
         return NextResponse.json({ error: 'cross-origin request blocked' }, { status: 403 });
       }
     } catch {
