@@ -53,3 +53,18 @@ describe('loadProjectPolicy — reads .redline/policy.yml, falls back gracefully
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });
+
+import { isDir } from '../src/scan.js';
+
+describe('isDir', () => {
+  it('is true for a directory, false for a file or missing path', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rl-isdir-'));
+    const file = join(dir, 'f.txt');
+    writeFileSync(file, 'x');
+    try {
+      expect(await isDir(dir)).toBe(true);
+      expect(await isDir(file)).toBe(false);
+      expect(await isDir(join(dir, 'nope'))).toBe(false);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});

@@ -783,3 +783,12 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   a present policy loads its rules, a missing file yields the default, and a malformed
   file yields the default without throwing. (Fixed a race in the first case where the
   temp dir was removed before the async read — now awaited.) +3 tests. Suite 261 green.
+
+## 2026-11-06 — finish the untested-exports sweep (isDir, listRecipes)
+
+- Closed the two remaining cheap gaps from the export-vs-test sweep: isDir (true for a
+  dir, false for a file/missing) and listRecipes (returns all recipes ordered by weakness
+  class). The only exported function now without a dedicated unit test is runLocalScan,
+  which orchestrates the whole `redline scan` (router + engine) and needs full mocking —
+  it's exercised end-to-end by the CLI help/arg tests, left for a dedicated harness.
+  +2 tests. Suite 263 green.

@@ -4,7 +4,7 @@ import * as schema from '../src/schema.js';
 import {
   createScan, setScanStatus, getScan, insertCandidate, insertFinding, insertRefereeRuns,
   insertRegressionTest, listActiveRegressionTests, insertRecipe, recipesByClass, getRepository,
-  listFindingsForScan, setFindingStatus, setScanCheckRun, getScanCompletionContext,
+  listFindingsForScan, setFindingStatus, setScanCheckRun, getScanCompletionContext, listRecipes,
 } from '../src/queries.js';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgresql://manu@localhost:5432/redline_test';
@@ -53,6 +53,17 @@ describe('db queries', () => {
     const reentrancy = await recipesByClass(h.db, 'reentrancy');
     expect(reentrancy.every((r) => r.weaknessClass === 'reentrancy')).toBe(true);
     expect(reentrancy.length).toBe(1);
+  });
+
+  it('lists all recipes ordered by weakness class', async () => {
+    await insertRecipe(h.db, { weaknessClass: 'reentrancy', chain: 'ethereum', severity: 'critical', labels: [], title: 'R2', template: 't', source: 'seed' });
+    await insertRecipe(h.db, { weaknessClass: 'access-control', chain: 'ethereum', severity: 'high', labels: [], title: 'A2', template: 't', source: 'seed' });
+    const all = await listRecipes(h.db);
+    const classes = all.map((r) => r.weaknessClass);
+    expect(classes).toContain('access-control');
+    expect(classes).toContain('reentrancy');
+    // ordered by weaknessClass -> access-control sorts before reentrancy
+    expect(classes.indexOf('access-control')).toBeLessThan(classes.lastIndexOf('reentrancy'));
   });
 
   it('reads a repository by id', async () => {
