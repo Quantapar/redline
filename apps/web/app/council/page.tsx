@@ -2,8 +2,9 @@ import { listAllFindings } from '@/lib/queries';
 import { Card } from '@/components/ui/card';
 import { StatusBadge } from '@/components/status-badge';
 import { Icon } from '@/components/icon';
-import { JusticeScale01Icon, Target01Icon, SourceCodeIcon } from '@hugeicons/core-free-icons';
+import { Target01Icon, SourceCodeIcon } from '@hugeicons/core-free-icons';
 import { CONSENSUS_LABEL } from '@/lib/format';
+import { Head } from '@/components/overlay/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,19 +14,8 @@ export default async function CouncilPage() {
   for (const { finding } of findings) byConsensus.set(finding.consensus, (byConsensus.get(finding.consensus) ?? 0) + 1);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
-          <Icon icon={JusticeScale01Icon} size={20} />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Referee council</h1>
-          <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-            The heart of Redline. The search can cut corners; the verdict cannot. A finding turns red only when
-            independent referees, each in its own room, agree on one fact: the money moved.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Head title="Referee council" meta="The search can cut corners; the verdict cannot. A finding turns red only when independent referees, each in its own room, agree on one fact: the money moved." />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
         <Card className="p-4">

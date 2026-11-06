@@ -5,6 +5,7 @@ import { Icon } from '@/components/icon';
 import { Target01Icon } from '@hugeicons/core-free-icons';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
 import { WEAKNESS_LABEL, SEVERITY_HUE } from '@/lib/format';
+import { Head } from '@/components/overlay/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,19 +13,8 @@ export default async function RecipesPage() {
   const recipes = await getRecipes();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
-          <Icon icon={Target01Icon} size={20} />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Attack recipes</h1>
-          <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-            A shared, public library of attack patterns. The swarm pulls from it on every scan, and
-            every proven attack is published back so anyone can replay it. No private code is ever stored here.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Head title="Attack recipes" meta="A shared, public library of attack patterns. The swarm pulls from it on every scan, and every proven attack is published back so anyone can replay it. No private code is ever stored here." />
 
       {recipes.length === 0 ? (
         <Empty className="rounded-xl border border-border py-16">
