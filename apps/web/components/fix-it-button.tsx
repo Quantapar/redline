@@ -55,7 +55,7 @@ export function FixItButton({ findingId }: { findingId: string }) {
           ) : error ? (
             <div className="rounded-lg border border-border bg-muted/40 p-4 text-[13px] text-muted-foreground">{error}</div>
           ) : fix ? (
-            <div className="space-y-3">
+            <div className="log-line-in space-y-3">
               <p className="text-[13px] leading-relaxed text-foreground">{fix.explanation}</p>
               {fix.diff && fix.diff !== '(no diff returned)' ? (
                 <CodeBlock code={fix.diff} language="ts" filename={`${fix.branch}.diff`} />
