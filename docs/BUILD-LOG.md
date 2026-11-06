@@ -691,3 +691,15 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   to time out the whole health check and cascade. Added connectTimeout: 2000. The check
   already had correct 200/503 semantics and no connection leak; this just makes the
   unhealthy case fail fast. Verified the healthy path still returns 200 quickly.
+
+## 2026-11-06 — CI now builds the web app; verification passes
+
+- Verified several surfaces are correct (no change needed): describeScanEvent handles
+  every emitted event type plus a default, SCAN_STATUS_LABEL covers all 9 scan statuses,
+  and the test isolation is sound (packages serial via workspace-concurrency=1, the
+  DB-heavy worker package sets fileParallelism:false) — which is why the suite is reliably
+  green.
+- Real CI gap closed: CI ran typecheck + tests but never a production build, so a
+  next-build-only regression (an SSR error typecheck misses) could merge. Added a
+  "Build web" step. Re-verified the production build passes after this session's web
+  changes (health, stream, status/cancel routes, components).
