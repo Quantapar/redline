@@ -44,4 +44,31 @@ describe('redline CLI main()', () => {
   it('scan on a non-directory returns an error code', async () => {
     expect(await main(['scan', join(dir, 'does-not-exist')])).toBe(1);
   });
+
+  describe('verify-deploy (the going-live gate must fail CLOSED)', () => {
+    const args = ['verify-deploy', '--repo', 'acme/vault', '--version', 'abc123', '--url', 'http://x'];
+
+    it('allows a green version (exit 0)', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ allowed: true, reason: 'green' }) }));
+      expect(await main(args)).toBe(0);
+    });
+    it('blocks a red version (exit 2)', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ allowed: false, reason: 'red' }) }));
+      expect(await main(args)).toBe(2);
+      expect(await main([...args, '--json'])).toBe(2);
+    });
+    it('fails closed when Redline is unreachable (non-zero, never 0)', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fetch failed')));
+      const code = await main(args);
+      expect(code).not.toBe(0);
+    });
+    it('fails closed when the response is not valid JSON', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => { throw new Error('Unexpected token <'); } }));
+      const code = await main(args);
+      expect(code).not.toBe(0);
+    });
+    it('missing args returns a non-zero usage code', async () => {
+      expect(await main(['verify-deploy', '--repo', 'acme/vault'])).not.toBe(0);
+    });
+  });
 });

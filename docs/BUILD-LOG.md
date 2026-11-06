@@ -545,3 +545,15 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
 - **"Connected code" scoped.** README step 3 claimed changes are probed "plus connected
   code", but connectedFunctions is always empty (no call-graph analysis). Reworded to the
   contracts that changed, with call-graph expansion marked planned.
+
+## 2026-11-06 — CLI verified end-to-end; lock the deploy gate's fail-closed behavior
+
+- Ran the whole CLI for real: policy init/add/list write valid YAML; verify-deploy
+  against the live server blocks a red version (exit 2), allows a green one (exit 0),
+  and the --json form is correct.
+- Checked the security-critical fail-closed paths: an unreachable server, a non-JSON
+  response, and an unknown version/repo all BLOCK the deploy (non-zero exit), so a
+  network blip can't let unchecked code ship. (An earlier "exit 0" reading was a
+  measurement artifact of piping through `head`; the real exit is 1.)
+- Added 5 CLI tests pinning the gate's fail-closed behavior so a refactor can't
+  silently open it. Suite 226 green across 10 packages.
