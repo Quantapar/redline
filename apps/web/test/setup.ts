@@ -17,6 +17,8 @@ if (!window.matchMedia) {
 const g = globalThis as unknown as Record<string, unknown>;
 if (!g.ResizeObserver) {
   g.ResizeObserver = class {
+    // Mirror the real signature (new ResizeObserver(callback)) so the stub matches callers.
+    constructor(_callback?: ResizeObserverCallback) {}
     observe() {}
     unobserve() {}
     disconnect() {}

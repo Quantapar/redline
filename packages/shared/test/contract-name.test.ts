@@ -41,3 +41,22 @@ describe('extractContractName with a file-name hint', () => {
     expect(extractContractName(src, 'Unknown', 'Gamma.sol')).toBe('Alpha');
   });
 });
+
+describe('extractContractName — hostile input', () => {
+  it('is linear on an unterminated-comment flood (no polynomial ReDoS)', () => {
+    const evil = '/*' + 'a/*'.repeat(200_000) + '\ncontract X {}';
+    const t = performance.now();
+    expect(extractContractName(evil, 'Unknown')).toBe('Unknown'); // all of it is one open comment
+    expect(performance.now() - t).toBeLessThan(500);
+  });
+  it('does not treat "//" or "/*" inside a string literal as a comment', () => {
+    const src = `string constant U = "https://x.io/*"; contract Real { string s = 'a//b'; }`;
+    expect(extractContractName(src)).toBe('Real');
+  });
+  it('handles escaped quotes inside strings', () => {
+    expect(extractContractName(`string q = "say \\"hi\\" // not a comment"; contract Esc {}`)).toBe('Esc');
+  });
+  it('still strips a line comment that ends the file, and a block comment mid-line', () => {
+    expect(extractContractName('contract /* contract for */ Mid {} // contract for')).toBe('Mid');
+  });
+});
