@@ -734,3 +734,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   error listener; it now throws a clear "anvil failed to start" instead of crashing, kills
   a half-started anvil on readiness timeout so it doesn't leak, and takes a bin override so
   the failure path is deterministically tested. +1 test. Suite 251 green.
+
+## 2026-11-06 — demo env restored (stale dev server, not a code issue)
+
+- A live re-verification found /, /council, /going-live, /recipes returning 500 while
+  /findings, /repositories, /policy were 200. Diagnosed carefully: getStats and every
+  page query function run correctly when called directly, the production build compiles
+  all 20 routes, and none of those page files were changed this session. Conclusion: the
+  long-running dev server (up through ~25 edits) was in a degraded HMR state, not a code
+  regression. Restarted it; all 8 routes now return 200 and the demo data is intact
+  (3 repos, 3 scans, 2 red, 2 forever-tests). No code change — the code was sound.
