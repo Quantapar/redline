@@ -149,3 +149,9 @@ Remaining Foundry-related work (my side, not blocking you):
   engine change; I'll run an independent review on it before pushing.
 - Path-traversal normalisation when writing PR-authored contract sources into the sandbox
   (noted at prepare.ts) — pairs with the above.
+
+## Update (repo is PUBLIC — 2026-11-06)
+- Flipped Quantapar/redline to public after a final full-history secret scan: the 6 real
+  credentials (0G, Alchemy mainnet+Sepolia, Kobra, Hugeicons, ENCRYPTION_KEY) had zero hits;
+  the only matches were public config defaults (localhost URLs, 0G public base URL, passwordless
+  local DB/redis strings) that live in tracked *.example files by design. No PEM keys in history.
