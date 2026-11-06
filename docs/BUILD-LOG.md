@@ -378,3 +378,9 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   (backward-compatible). The server now starts and lists redline_list_findings + redline_fix_context.
 - Lesson: the tool-handler unit tests passed, but the server process was broken — live smoke matters.
 - Also added db-queries, fixer, and more component tests. Totals: 203 tests across 10 packages.
+
+## 2026-11-06 — more live smokes
+- GitHub App defaulted to Probot's port 3000, colliding with the web app. Defaulted it to 3001
+  (matches the webhook-forwarding doc). Live smoke confirms it now starts cleanly and degrades
+  gracefully without secrets ("configure APP_ID and PRIVATE_KEY in .env").
+- Worker process live smoke: starts and listens on the queue.
