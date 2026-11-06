@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image: [web, worker]
+        image: [web, worker, github-app]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
