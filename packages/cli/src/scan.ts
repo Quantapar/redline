@@ -37,10 +37,11 @@ export async function detectTargets(dir: string): Promise<LocalTarget[]> {
   const targets: LocalTarget[] = [];
   for (const file of files) {
     const source = await readFile(file, 'utf8');
-    const match = source.match(/contract\s+(\w+)/);
-    if (!match) continue;
+
+    const contractName = extractContractName(source, '');
+    if (!contractName) continue;
     targets.push({
-      contractName: match[1]!,
+      contractName,
       filePath: relative(dir, file),
       source,
       changedFunctions: [...source.matchAll(/function\s+(\w+)/g)].map((m) => m[1]!).slice(0, 20),
@@ -68,7 +69,7 @@ export async function isDir(path: string): Promise<boolean> {
   }
 }
 
-import { BudgetGuard, type Candidate } from '@redline/shared';
+import { BudgetGuard, extractContractName, type Candidate } from '@redline/shared';
 import { OGRouterClient, huntSwarm, type RouterClient } from '@redline/hunters';
 import { SimulationRefereeEngine, createRefereeEngine, runCouncil, type RefereeEngine } from '@redline/engine';
 

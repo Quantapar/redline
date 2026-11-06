@@ -1,6 +1,11 @@
 # Full local/production stack. `docker compose up` brings up Postgres, Redis, the
-# dashboard, and the scan worker (the worker image ships Foundry for the real
-# fork-based council). Set secrets in a .env next to this file.
+# dashboard, the scan worker (its image ships Foundry for the real fork-based
+# council), and the GitHub App. Set secrets in a .env next to this file.
+#
+# Required secrets (compose refuses to start without them, matching the apps'
+# fail-closed behaviour in production):
+#   POSTGRES_PASSWORD, ENCRYPTION_KEY, GITHUB_APP_ID, GITHUB_PRIVATE_KEY,
+#   GITHUB_WEBHOOK_SECRET
 services:
   postgres:
     image: postgres:16
@@ -32,7 +37,10 @@ services:
       REDIS_URL: redis://redis:6379
       OG_ROUTER_API_KEY: ${OG_ROUTER_API_KEY:-}
       ARCHIVE_RPC_URLS: ${ARCHIVE_RPC_URLS:-}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      # Required: the web image runs in production, where attacks are never stored
+      # as plaintext and the CSRF token is never signed with a dev fallback.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in .env}
+      REDLINE_MUTATION_SECRET: ${REDLINE_MUTATION_SECRET:-}
       REDLINE_ADMIN_TOKEN: ${REDLINE_ADMIN_TOKEN:-}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     ports: ['3000:3000']
@@ -47,10 +55,33 @@ services:
       REDIS_URL: redis://redis:6379
       OG_ROUTER_API_KEY: ${OG_ROUTER_API_KEY:-}
       ARCHIVE_RPC_URLS: ${ARCHIVE_RPC_URLS:-}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in .env}
+    # The web container pushes the schema on boot; give it a head start so the
+    # worker never queries a table that does not exist yet.
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      web: { condition: service_started }
+
+  github-app:
+    build: { context: ., dockerfile: docker/github-app.Dockerfile }
+    environment:
+      DATABASE_URL: postgresql://redline:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/redline
+      REDIS_URL: redis://redis:6379
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # Required to receive webhooks. The app refuses to start without a webhook
+      # secret (it would otherwise fall back to the world-known "development" one).
+      GITHUB_APP_ID: ${GITHUB_APP_ID:?set GITHUB_APP_ID in .env}
+      GITHUB_PRIVATE_KEY: ${GITHUB_PRIVATE_KEY:?set GITHUB_PRIVATE_KEY (inline PEM) in .env}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:?set GITHUB_WEBHOOK_SECRET in .env}
+      # Optional: a smee channel for local webhook delivery. Omit in production,
+      # where GitHub posts to this service's public URL directly.
+      GITHUB_WEBHOOK_PROXY_URL: ${GITHUB_WEBHOOK_PROXY_URL:-}
+    ports: ['3001:3001']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      web: { condition: service_started }
 
 volumes:
   redline_pg:
