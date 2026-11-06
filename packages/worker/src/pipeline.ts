@@ -94,9 +94,38 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   const sourceByContract = new Map(targets.map((t) => [t.contractName, t.source]));
   emit({ type: 'log', scanId, message: `prepared ${targets.length} target(s)`, at: now() });
 
+  // Build a throwaway Foundry project (changed contracts + forge-std) the real
+  // referee compiles the stripped attack against. Cheap once forge-std is cached;
+  // the simulation engine ignores it. A failure here must not sink the scan. It is
+  // built before the hunt because the council also runs during the hunt (below).
+  const budget = new BudgetGuard(scan.budgetCapCents, scan.spentCents);
+  const refProject = await prepareRefereeProject(
+    targets.filter((t) => t.source).map((t) => ({ file: t.filePath, source: t.source })),
+  ).catch(() => null);
+  try {
+  const baseDispatch = deps.council ?? DEFAULT_COUNCIL_DISPATCH;
+  const dispatch: CouncilDispatch = refProject
+    ? { ...baseDispatch, projectDir: refProject.projectDir }
+    : baseDispatch;
+
   // ---- Hunt ----
   await setStatus('hunting');
-  const budget = new BudgetGuard(scan.budgetCapCents, scan.spentCents);
+  // The council runs on each candidate as soon as it is proposed, so the swarm
+  // escalates to a stronger model when the referees do not see money move, instead
+  // of stopping at the first guess. The verdicts are kept and reused by Verify.
+  const councilByCandidate = new Map<string, Awaited<ReturnType<typeof runCouncil>>>();
+  const verifyDuringHunt = async (c: Candidate): Promise<boolean> => {
+    const council = await runCouncil(deps.engine, c, dispatch);
+    councilByCandidate.set(c.id, council);
+    const { result } = council;
+    emit({
+      type: 'log', scanId, at: now(),
+      message: result.isRed
+        ? `referees reproduced ${c.hunterModel}'s ${c.weaknessClass} attack (${result.agreementCount}/${result.validCount})`
+        : `referees did not see money move for ${c.hunterModel}'s ${c.weaknessClass} attack; escalating`,
+    });
+    return result.isRed;
+  };
   const recipes = (await listRecipes(db)).map((r) => ({ weaknessClass: r.weaknessClass, title: r.title, template: r.template }));
   candidates = await huntSwarm({
     client: deps.client,
@@ -108,6 +137,7 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
     onProgress: (message) => emit({ type: 'log', scanId, message, at: now() }),
     onCandidate: (c) =>
       emit({ type: 'candidate', scanId, contract: c.targetContract, weaknessClass: c.weaknessClass, model: c.hunterModel, at: now() }),
+    verify: verifyDuringHunt,
   });
 
   // Persist candidates, keep db ids.
@@ -159,22 +189,11 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
 
   // ---- Verify (council) ----
   await setStatus('verifying');
-  // Build a throwaway Foundry project (changed contracts + forge-std) the real
-  // referee compiles the stripped attack against. Cheap once forge-std is cached;
-  // the simulation engine ignores it. A failure here must not sink the scan.
-  const refProject = await prepareRefereeProject(
-    targets.filter((t) => t.source).map((t) => ({ file: t.filePath, source: t.source })),
-  ).catch(() => null);
-  try {
-  const baseDispatch = deps.council ?? DEFAULT_COUNCIL_DISPATCH;
-  const dispatch: CouncilDispatch = refProject
-    ? { ...baseDispatch, projectDir: refProject.projectDir }
-    : baseDispatch;
   const priorKeys = new Set<string>();
 
   for (const { domain: c, dbId, isRegression } of dbCandidates) {
     try {
-    const { runs, result } = await runCouncil(deps.engine, c, dispatch);
+    const { runs, result } = councilByCandidate.get(c.id) ?? (await runCouncil(deps.engine, c, dispatch));
     for (const r of runs) {
       emit({ type: 'referee', scanId, candidate: c.targetContract, referee: r.refereeName, outcome: r.outcome, at: now() });
     }

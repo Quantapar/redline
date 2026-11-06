@@ -16,14 +16,24 @@ export interface SwarmInput {
   onCandidate?: (c: Candidate) => void;
   onProgress?: (msg: string) => void;
   recipes?: RecipeHint[];
+  /**
+   * Check a candidate the moment it is proposed (the pipeline runs the referee
+   * council here). When given, only a candidate that passes counts toward
+   * `stopAfter`, so a cheap model's wrong guess no longer ends the hunt: the
+   * swarm keeps escalating until an attack is actually reproduced or the budget
+   * runs out. Every candidate is still returned, passing or not. A verifier that
+   * throws counts as not passing.
+   */
+  verify?: (c: Candidate) => Promise<boolean>;
 }
 
 const ALL_CLASSES = WeaknessClass.options;
 
 /**
  * Run the swarm: cheap models across all targets first, then escalate to stronger
- * tiers only on targets that produced nothing, always under the budget cap. The
- * moment a target has enough candidates, it is dropped from later tiers.
+ * tiers only on targets that produced nothing (or, with `verify`, nothing that
+ * reproduced), always under the budget cap. The moment a target has enough
+ * candidates, it is dropped from later tiers.
  */
 export async function huntSwarm(input: SwarmInput): Promise<Candidate[]> {
   const stopAfter = input.stopAfter ?? 1;
@@ -72,11 +82,13 @@ export async function huntSwarm(input: SwarmInput): Promise<Candidate[]> {
           targetContract: target.contractName,
         }));
         for (const c of cands) {
+          all.push(c);
+          input.onCandidate?.(c);
+          const passed = input.verify ? await input.verify(c).catch(() => false) : true;
+          if (!passed) continue;
           const bucket = found.get(target.contractName) ?? [];
           bucket.push(c);
           found.set(target.contractName, bucket);
-          all.push(c);
-          input.onCandidate?.(c);
           if (bucket.length >= stopAfter) break;
         }
       }

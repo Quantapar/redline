@@ -108,8 +108,8 @@ export async function main(argv: string[]): Promise<number> {
         console.log(`      ${r.summary}`);
       }
       if (report.candidateCount > 0 && report.red.length === 0) {
-        console.log('\nNo theft was reproduced. Install Foundry (forge/anvil) for the real');
-        console.log('fork-based council — candidates are only proven by actually moving the money.');
+        console.log('\nNo theft was reproduced: the referees did not see money move for any proposed');
+        console.log('attack. The code survived these attacks; that is not a promise it is safe.');
       }
       return report.red.length > 0 ? 2 : 0;
     } catch (err) {

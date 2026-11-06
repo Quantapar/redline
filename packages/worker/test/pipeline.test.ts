@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { createScan, setScanStatus, decrypt, encrypt, insertRegressionTest, schema, eq } from '@redline/db';
 import { SimulationRefereeEngine } from '@redline/engine';
-import { FakeRouterClient, type HuntTarget } from '@redline/hunters';
+import { FakeRouterClient, SWARM, type HuntTarget } from '@redline/hunters';
 import { DEFAULT_POLICY } from '@redline/shared';
 import { runScan } from '../src/pipeline.js';
 import { testDb, resetDb, seedRepo } from './helpers.js';
@@ -104,11 +104,45 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
     const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'def456' });
     const result = await runScan(deps(fakeClientFor('@redline-sim exploitable=true netWei=5000000000000000000 cheatDependent=true flaky=false')), scan.id);
 
-    expect(result.candidateCount).toBe(1);
+    // No referee reproduces it, so the swarm escalates through every model; none is red.
+    expect(result.candidateCount).toBe(SWARM.length);
     expect(result.redCount).toBe(0);
-    expect(result.findings[0]!.isRed).toBe(false);
+    expect(result.findings.every((f) => !f.isRed)).toBe(true);
     const regs = await handle.db.select().from(schema.regressionTests);
     expect(regs).toHaveLength(0); // nothing saved, no alarm
+  });
+
+  it('escalates past a guess the referees do not reproduce, and stops at the first one they do', async () => {
+    const repo = await seedRepo(handle.db);
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'escalate' });
+    // The first two models guess wrong; the third model's attack really moves money.
+    let calls = 0;
+    const client = new FakeRouterClient(() => {
+      calls += 1;
+      const exploitable = calls >= 3;
+      return JSON.stringify({
+        candidates: [{
+          weaknessClass: exploitable ? 'reentrancy' : 'logic-error', targetFunction: 'withdraw',
+          summary: exploitable ? 'reentrancy drains the vault' : 'a wrong guess',
+          forgeTest: `// @redline-sim exploitable=${exploitable} netWei=5000000000000000000 cheatDependent=false flaky=false\nfunction testExploit() public { target.withdraw(); }`,
+          claimedValueWei: '5000000000000000000', usedShortcuts: false,
+        }],
+      });
+    });
+    const sim = new SimulationRefereeEngine();
+    let refereeCalls = 0;
+    const countingEngine = { run: (input: Parameters<typeof sim.run>[0]) => { refereeCalls += 1; return sim.run(input); } };
+    const result = await runScan({ ...deps(client), engine: countingEngine }, scan.id);
+
+    expect(calls).toBe(3); // no model is asked after the theft is reproduced
+    expect(result.candidateCount).toBe(3);
+    expect(result.redCount).toBe(1);
+    expect(result.findings.map((f) => f.isRed)).toEqual([false, false, true]);
+    // The council ran once per candidate (3 referees each), not again in Verify.
+    expect(refereeCalls).toBe(9);
+    // and the scan records what the hunt actually spent
+    const finalScan = (await handle.db.select().from(schema.scans))[0]!;
+    expect(finalScan.spentCents).toBeGreaterThan(0);
   });
 
   it('survives a candidate whose verification throws and still completes', async () => {
@@ -121,8 +155,8 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
       engine: throwingEngine,
       prepare: async () => ({ targets: [target], policy: DEFAULT_POLICY }),
     }, scan.id);
-    expect(result.candidateCount).toBe(1);
-    expect(result.redCount).toBe(0); // the throwing candidate was skipped, not fatal
+    expect(result.candidateCount).toBe(SWARM.length); // a throwing verdict counts as not reproduced
+    expect(result.redCount).toBe(0); // the throwing candidates were skipped, not fatal
     const finalScan = (await handle.db.select().from(schema.scans))[0]!;
     expect(finalScan.status).toBe('complete');
   });

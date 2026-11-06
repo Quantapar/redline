@@ -25,6 +25,29 @@ describe('huntSwarm orchestration', () => {
     expect(budget.spentCents).toBeGreaterThan(0);
   });
 
+  it('keeps escalating while the verifier rejects candidates, and stops at the first that passes', async () => {
+    const calls: string[] = [];
+    const client = new FakeRouterClient((req) => { calls.push(req.model); return candidateJson; });
+    const verified: string[] = [];
+    const cands = await huntSwarm({
+      client, scanId: 's1', targets: [target], policy: DEFAULT_POLICY, budget: new BudgetGuard(500),
+      // only the first strong-tier model's attack "reproduces"
+      verify: async (c) => { verified.push(c.hunterModel); return c.hunterModel === 'deepseek-v4-pro'; },
+    });
+    expect(calls).toEqual(['qwen3-coder-flash', 'glm-5.3-flash', 'deepseek-v4-flash', 'deepseek-v4-pro']);
+    expect(verified).toEqual(calls); // every candidate was checked as it arrived
+    expect(cands).toHaveLength(4); // rejected candidates are still returned
+  });
+
+  it('treats a verifier that throws as not passing', async () => {
+    const client = new FakeRouterClient(() => candidateJson);
+    const cands = await huntSwarm({
+      client, scanId: 's1', targets: [target], policy: DEFAULT_POLICY, budget: new BudgetGuard(500),
+      verify: async () => { throw new Error('referee down'); },
+    });
+    expect(cands.length).toBe(7); // tried every model, none passed
+  });
+
   it('escalates to stronger tiers when cheap models find nothing', async () => {
     const calls: string[] = [];
     const client = new FakeRouterClient((req) => {

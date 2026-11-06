@@ -71,7 +71,7 @@ export async function isDir(path: string): Promise<boolean> {
 
 import { BudgetGuard, extractContractName, type Candidate } from '@redline/shared';
 import { OGRouterClient, huntSwarm, type RouterClient } from '@redline/hunters';
-import { SimulationRefereeEngine, createRefereeEngine, runCouncil, type RefereeEngine } from '@redline/engine';
+import { SimulationRefereeEngine, createRefereeEngine, runCouncil, prepareRefereeProject, type RefereeEngine } from '@redline/engine';
 
 export interface LocalScanReport {
   candidateCount: number;
@@ -95,22 +95,38 @@ export async function runLocalScan(opts: {
     : await createRefereeEngine();
   const budget = new BudgetGuard(opts.budgetCents);
 
-  const candidates = await huntSwarm({
-    client,
-    scanId: 'local',
-    targets: opts.targets.map((t) => ({ ...t })),
-    policy: opts.policy,
-    budget,
-    onProgress: opts.onProgress,
-  });
-
-  const dispatch = { providers: ['room-a', 'room-b', 'room-c'], blocks: [0, 0, 0], thresholdWei: '1000000000000000' };
+  // The real referee compiles each attack against a throwaway Foundry project that
+  // holds the contracts under test plus forge-std; without it every vote errors.
+  const project = opts.forceSimulation
+    ? null
+    : await prepareRefereeProject(opts.targets.map((t) => ({ file: t.filePath, source: t.source }))).catch(() => null);
+  const dispatch = {
+    providers: ['room-a', 'room-b', 'room-c'], blocks: [0, 0, 0], thresholdWei: '1000000000000000',
+    ...(project ? { projectDir: project.projectDir } : {}),
+  };
   const red: LocalScanReport['red'] = [];
-  for (const c of candidates as Candidate[]) {
-    const { result } = await runCouncil(engine, c, dispatch);
-    if (result.isRed) {
-      red.push({ contract: c.targetContract, weaknessClass: c.weaknessClass, summary: c.summary, agreement: `${result.agreementCount}/${result.validCount}` });
-    }
+  try {
+    // The council judges each candidate as it arrives, so the swarm escalates past a
+    // wrong guess to a stronger model instead of stopping at the first one.
+    const candidates = await huntSwarm({
+      client,
+      scanId: 'local',
+      targets: opts.targets.map((t) => ({ ...t })),
+      policy: opts.policy,
+      budget,
+      onProgress: opts.onProgress,
+      verify: async (c: Candidate) => {
+        const { result } = await runCouncil(engine, c, dispatch);
+        if (result.isRed) {
+          red.push({ contract: c.targetContract, weaknessClass: c.weaknessClass, summary: c.summary, agreement: `${result.agreementCount}/${result.validCount}` });
+        } else {
+          opts.onProgress?.(`  referees saw no money move for ${c.hunterModel}'s attack; escalating`);
+        }
+        return result.isRed;
+      },
+    });
+    return { candidateCount: candidates.length, red, spentCents: budget.spentCents };
+  } finally {
+    if (project) await project.cleanup().catch(() => undefined);
   }
-  return { candidateCount: candidates.length, red, spentCents: budget.spentCents };
 }
