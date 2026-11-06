@@ -49,7 +49,15 @@ function detail(r: GithubRepo) {
   );
 }
 
-export function PickRepo({ account, onBack }: { account: GithubAccount; onBack: () => void }) {
+export function PickRepo({
+  account,
+  onBack,
+  onConnect,
+}: {
+  account: GithubAccount;
+  onBack: () => void;
+  onConnect: (repo: GithubRepo, installUrl: string) => void;
+}) {
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [query, setQuery] = useState("");
   // A repo pasted on the first step comes in already picked
@@ -85,12 +93,20 @@ export function PickRepo({ account, onBack }: { account: GithubAccount; onBack: 
 
   function connect() {
     if (!picked || load.state !== "ready" || !load.installUrl || connecting) return;
-    setConnecting(true);
     // Connecting installs the Redline GitHub App on this repo; from then on its
-    // pushes and pull requests are attacked, with the result as a check on GitHub
+    // pushes and pull requests are attacked, with the result as a check on GitHub.
+    // GitHub opens in its own tab so this one can follow the attack live.
     const url = new URL(load.installUrl);
     url.searchParams.append("repository_ids[]", String(picked.id));
-    window.location.assign(url.toString());
+    const tab = window.open(url.toString(), "_blank");
+    if (!tab) {
+      // Pop-up blocked: go there in this tab instead
+      setConnecting(true);
+      window.location.assign(url.toString());
+      return;
+    }
+    tab.opener = null;
+    onConnect(picked, url.toString());
   }
 
   const name = account.owner.name || login;

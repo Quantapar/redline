@@ -74,7 +74,7 @@ export function LiveRead({
           {ready
             ? pending.length > 0
               ? "Confirm a few things we found, or go straight to it"
-              : `We checked your ${location.nickname} shop`
+              : `We attacked ${location.nickname} on a mainnet fork`
             : `${steps[activeIndex].label}, ${timeLeft.charAt(0).toLowerCase()}${timeLeft.slice(1)}`}
         </p>
         {/* The fill slides in on the compositor rather than growing its width, and
@@ -111,7 +111,7 @@ export function LiveRead({
               className="h-full"
             >
               <ReportChat
-                headline="We found 3 things to fix first, starting with your new Rainey St shop."
+                headline="We found 3 things to fix first, starting with the reentrancy in withdraw()."
                 facts={found}
                 decisions={decisions}
                 onDecide={onDecide}

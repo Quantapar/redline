@@ -11,7 +11,9 @@ import { SoundToggle } from "@/components/flow/ui/sound";
 import { FindBusiness } from "./find-business";
 import { ConfirmBusiness } from "./confirm-business";
 import { PickRepo } from "./pick-repo";
-import type { GithubAccount } from "@/lib/github-target";
+import { LiveAttack, type ScanProgress } from "./live-attack";
+import { ConnectedVerdict } from "./connected-verdict";
+import type { GithubAccount, GithubRepo } from "@/lib/github-target";
 import { LiveRead } from "./live-read";
 import { Verdict } from "./verdict";
 import { Dots, SETUP_STEPS } from "./setup-shell";
@@ -32,6 +34,9 @@ export function OnboardingFlow() {
   const [stage, setStage] = useState<Stage>("find");
   const [location, setLocation] = useState<Location | null>(null);
   const [account, setAccount] = useState<GithubAccount | null>(null);
+  // The repo connected for real, and its finished scan, once there is one
+  const [connected, setConnected] = useState<{ repo: GithubRepo; installUrl: string } | null>(null);
+  const [result, setResult] = useState<ScanProgress | null>(null);
   const [email, setEmail] = useState("");
   const [decisions, setDecisions] = useState<FactDecisions>({});
   const [runKey, setRunKey] = useState(0);
@@ -47,7 +52,7 @@ export function OnboardingFlow() {
   }, []);
 
   const elapsed = useScanClock({
-    running: stage === "scan",
+    running: stage === "scan" && !connected,
     speed,
     duration: SCAN_DURATION,
     runKey,
@@ -118,7 +123,17 @@ export function OnboardingFlow() {
               }}
             />
           )}
-          {stage === "confirm" && account && <PickRepo account={account} onBack={() => go("find")} />}
+          {stage === "confirm" && account && (
+            <PickRepo
+              account={account}
+              onBack={() => go("find")}
+              onConnect={(repo, installUrl) => {
+                setConnected({ repo, installUrl });
+                setResult(null);
+                go("scan");
+              }}
+            />
+          )}
           {/* Reached from the prototype controls without a GitHub account */}
           {stage === "confirm" && !account && (
             <ConfirmBusiness
@@ -128,7 +143,18 @@ export function OnboardingFlow() {
               onConfirm={restartScan}
             />
           )}
-          {stage === "scan" && (
+          {stage === "scan" && connected && (
+            <LiveAttack
+              repo={connected.repo}
+              installUrl={connected.installUrl}
+              onDone={(scan) => {
+                setResult(scan);
+                go("verdict");
+              }}
+            />
+          )}
+          {/* The prototype run, when no repo was connected */}
+          {stage === "scan" && !connected && (
             <LiveRead
               location={current}
               elapsed={elapsed}
@@ -139,7 +165,8 @@ export function OnboardingFlow() {
               onDone={() => go("verdict")}
             />
           )}
-          {stage === "verdict" && (
+          {stage === "verdict" && connected && result && <ConnectedVerdict repo={connected.repo} scan={result} />}
+          {stage === "verdict" && !(connected && result) && (
             <Verdict location={current} email={email} />
           )}
         </motion.div>

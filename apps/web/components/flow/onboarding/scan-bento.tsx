@@ -172,7 +172,7 @@ function MiniSite() {
         <span className="ml-3 flex-1 rounded bg-white/[0.05] py-0.5 text-center font-mono text-[9px] text-ink-3">{business.website}</span>
       </div>
       <p className="bg-secondary py-1.5 text-center text-[8px] font-semibold tracking-[0.08em] text-ink uppercase">
-        Our newest location now open at 88 Rainey St
+        Pull request #42 changes withdraw()
       </p>
       <div className="px-6 pt-4">
         <span className="inline-flex h-[29px] w-[44px] items-center justify-center rounded bg-secondary font-mono text-[10px] font-semibold text-ink outline-none">{"</>"}</span>
@@ -183,14 +183,14 @@ function MiniSite() {
           function withdraw(uint256 amount) external
         </p>
         <p className="mt-3 inline-block rounded bg-ink px-2 py-1 text-[7px] font-semibold tracking-[0.08em] text-paper uppercase">
-          Order online for pickup
+          External call before state write
         </p>
         <div className="mt-3.5 grid grid-cols-2 gap-3 text-[8px] leading-snug text-ink-2">
           <p>
-            <span className="font-medium text-ink">Rainey Street</span>, daily 7am to 3pm
+            <span className="font-medium text-ink">msg.sender.call</span>, sends the balance
           </p>
           <p>
-            <span className="font-medium text-ink">Congress Ave</span>, closed weekends
+            <span className="font-medium text-ink">balances = 0</span>, only after the call
           </p>
         </div>
       </div>
@@ -268,7 +268,7 @@ function Distribution({ elapsed }: { elapsed: number }) {
 // way theirs does, and the higher it reads, the harder the whole scene shakes.
 // Once the scan finishes it settles on the score.
 
-const READINGS = ["4.8★", "#9", "8 cafés", "5★", "4 shops", "13,861", "634 posts", "7am–3pm", "0 ads", "88 Rainey St", "every 5 days", "3 above"];
+const READINGS = ["8.5 ETH", "reentrancy", "4 calls", "flash loan", "withdraw()", "21,394,112", "oracle drift", "0 approvals", "5 of 5", "slippage", "3 paths", "+12.4 ETH"];
 // The dial reads 0–120 over 225°, starting at -113° (ToDesktop's numbers)
 const DIAL_MAX = 120;
 const dialAngle = (v: number) => -113 + (v / DIAL_MAX) * 225;
