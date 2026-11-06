@@ -85,4 +85,20 @@ address, and one run against an empty vault all net exactly zero.
 - A finding's runnable attack is redacted server-side and unlocked only on proof of contract ownership.
 - Each scan is meant to run in its own sealed, throwaway sandbox.
 
+## Automated checks on this repository
+We hold our own code to the bar we set for others. Every push and pull request runs,
+as GitHub checks:
+- **CodeQL** static analysis over the TypeScript (the `security-and-quality` query set),
+  reporting to the code-scanning dashboard.
+- **gitleaks** secret scanning over the full history — the repo is public, so a committed
+  key is a hard failure.
+- **Dependency review** on pull requests, which blocks a change that introduces a
+  high-severity or copyleft-licensed dependency before it merges.
+- **pnpm audit** as a reported advisory list, and **Dependabot** grouped weekly updates
+  for npm and the Actions themselves, so patched vulnerabilities land quickly.
+
+Production dependencies are kept current against known advisories; the toolchain
+(`forge`/`cast`/`anvil`) and the model router run with a scrubbed environment so untrusted
+attack code can never read process secrets.
+
 We never claim a contract is "safe" — only that it survived these attacks at this time.
