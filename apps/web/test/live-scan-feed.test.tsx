@@ -43,4 +43,21 @@ describe('LiveScanFeed', () => {
     expect(screen.getByText(/Scan finished/)).toBeDefined();
     expect(es).toBeNull(); // no stream opened for a finished scan
   });
+
+  it('ends the live view when the scan is cancelled elsewhere (poll fallback)', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn().mockResolvedValue({ json: async () => ({ status: 'cancelled' }) });
+      vi.stubGlobal('fetch', fetchMock);
+      render(<LiveScanFeed scanId="s3" initialStatus="hunting" />);
+      expect(screen.getByText(/Live — attacking on a throwaway fork/)).toBeDefined();
+      // Advance past the 2s status poll; the stream never sent 'done'.
+      await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+      expect(fetchMock).toHaveBeenCalledWith('/api/scans/s3/status', expect.anything());
+      expect(screen.getByText(/Scan finished/)).toBeDefined(); // no longer stuck on "Live"
+      expect(es!.closed).toBe(true); // the stream was closed
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

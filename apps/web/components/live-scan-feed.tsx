@@ -67,7 +67,10 @@ export function LiveScanFeed({ scanId, initialStatus }: { scanId: string; initia
       try {
         const r = await fetch(`/api/scans/${scanId}/status`, { cache: 'no-store' });
         const d = await r.json();
-        if (d.status === 'complete' || d.status === 'failed') {
+        // Any terminal status ends the live view — including 'cancelled', which a
+        // stream that missed the 'done' event would otherwise never pick up, leaving
+        // the feed stuck on "Live" forever.
+        if (d.status === 'complete' || d.status === 'failed' || d.status === 'cancelled') {
           setStatus(d.status);
           setDone(true);
           es.close();

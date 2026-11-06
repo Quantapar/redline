@@ -574,3 +574,13 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
   - Going-live gates: canDeploy/verify-deploy are real and fail closed; the on-chain ENS
     lock and Safe guard are the planned extension. Added verify-deploy to the CLI list.
 - packages/gates and canDeploy confirmed to exist and be wired.
+
+## 2026-11-06 — production build verified; SSE cancelled-poll fix
+
+- Ran the production build of apps/web (next build): all 20 routes build cleanly, no
+  SSR/type errors, reasonable bundle sizes. Confirms the app is production-buildable
+  after this session's changes, not just dev-runnable.
+- Live scan feed: the status-poll fallback ended the view only on 'complete'/'failed',
+  not 'cancelled'. A scan cancelled elsewhere, whose stream missed the 'done' event,
+  would leave the feed stuck on "Live" forever. Added 'cancelled' to the terminal
+  check. +1 test (cancelled detected via the poll). Suite 227 green.
