@@ -26,22 +26,36 @@ function stripComments(source: string): string {
     .replace(/\/\/[^\n]*/g, ' ');
 }
 
+/** The base name of a Solidity file, without directories or the .sol extension. */
+function baseName(file: string): string {
+  const last = file.split(/[\\/]/).pop() ?? file;
+  return last.replace(/\.sol$/i, '');
+}
+
 /**
  * Returns the primary contract/library/interface name, or `fallback` when none
- * is found. Prefers a `contract` declaration; otherwise the first library or
- * interface.
+ * is found.
+ *
+ * Selection order: (1) a declaration whose name matches the file name, since
+ * Solidity convention puts the main contract in a file of the same name — this
+ * avoids returning a helper contract declared before the main one; (2) the first
+ * `contract` declaration; (3) the first library/interface. `fileName` is optional
+ * and may be a full path.
  */
-export function extractContractName(source: string, fallback = 'Unknown'): string {
+export function extractContractName(source: string, fallback = 'Unknown', fileName?: string): string {
   if (!source) return fallback;
   const clean = stripComments(source);
+  const wanted = fileName ? baseName(fileName) : '';
+  let firstContract: string | null = null;
   let firstAny: string | null = null;
   DECL.lastIndex = 0;
   for (let m = DECL.exec(clean); m; m = DECL.exec(clean)) {
     const kind = m[1]!;
     const name = m[2]!;
     if (RESERVED.has(name)) continue;
-    if (kind === 'contract') return name;
+    if (wanted && name === wanted) return name; // the file's namesake wins outright
+    if (kind === 'contract' && firstContract === null) firstContract = name;
     if (firstAny === null) firstAny = name;
   }
-  return firstAny ?? fallback;
+  return firstContract ?? firstAny ?? fallback;
 }

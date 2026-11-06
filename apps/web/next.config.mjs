@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...(process.env.NEXT_DISTDIR ? { distDir: process.env.NEXT_DISTDIR } : {}),
   transpilePackages: ['@redline/db', '@redline/shared', '@redline/hunters', '@redline/engine', '@redline/worker', '@redline/gates'],
   eslint: { ignoreDuringBuilds: true },
   webpack: (config) => {
