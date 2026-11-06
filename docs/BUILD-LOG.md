@@ -532,3 +532,16 @@ flip repo public, Sepolia wallet for the ENS/Safe demo. See docs/NEED-FROM-YOU.m
     page label, and DEMO.md.
 - DEMO.md now has a single "Honest scope: wired vs planned" section covering Foundry,
   PR-opening, and ENS/Safe, so the repo reads consistently for a public audience.
+
+## 2026-11-06 — wire per-repo policy; scope the "connected code" claim
+
+- **Per-repo .redline/policy.yml now actually applies during a scan.** The CLI managed
+  the file and the schema cached it as policyJson, but the pipeline used DEFAULT_POLICY
+  and never read the repository record — so a repo's rules never reached the hunt or the
+  judge. The pipeline now loads repo.policyJson, validates it with the Policy schema, and
+  uses it (falling back to the default when absent or invalid). This turns the README's
+  "Security policy" claim from aspirational into true. +2 pipeline tests (applied; safe
+  fallback on an invalid stored policy).
+- **"Connected code" scoped.** README step 3 claimed changes are probed "plus connected
+  code", but connectedFunctions is always empty (no call-graph analysis). Reworded to the
+  contracts that changed, with call-graph expansion marked planned.

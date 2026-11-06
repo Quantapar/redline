@@ -37,7 +37,8 @@ export async function gitPrepare(scan: typeof schema.scans.$inferSelect): Promis
       analyzerNotes: [],
     });
   }
-  // Per-repo policy is applied by the pipeline's judge via the repository record;
-  // the hunt prompt uses the default here and is tightened once the policy is loaded.
+  // Return the default here; the pipeline overrides it with the repository's own
+  // .redline/policy.yml (cached as policyJson) when the repo has a valid one, so the
+  // per-repo rules guide both the hunt prompt and the judge.
   return { targets, policy: DEFAULT_POLICY };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { createScan, setScanStatus, decrypt, encrypt, insertRegressionTest, schema } from '@redline/db';
+import { createScan, setScanStatus, decrypt, encrypt, insertRegressionTest, schema, eq } from '@redline/db';
 import { SimulationRefereeEngine } from '@redline/engine';
 import { FakeRouterClient, type HuntTarget } from '@redline/hunters';
 import { DEFAULT_POLICY } from '@redline/shared';
@@ -59,6 +59,32 @@ describe('scan pipeline (live Postgres, simulated engine)', () => {
     expect(regs).toHaveLength(1); // the forever-test was saved
     const runs = await handle.db.select().from(schema.refereeRuns);
     expect(runs.length).toBe(3); // a full council
+  });
+
+  it("applies the repository's own .redline/policy.yml during the scan", async () => {
+    const repo = await seedRepo(handle.db);
+    // The repo stores a custom plain-English rule targeting withdraw*.
+    await handle.db.update(schema.repositories)
+      .set({ policyJson: { version: 1, rules: [{ id: 'no-unguarded-withdraw', text: 'withdraw must be guarded', severity: 'high', appliesTo: ['withdraw*'] }] } })
+      .where(eq(schema.repositories.id, repo.id));
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'policy1' });
+    const result = await runScan(deps(fakeClientFor('@redline-sim exploitable=true netWei=5000000000000000000 cheatDependent=false flaky=false')), scan.id);
+
+    expect(result.redCount).toBe(1);
+    // the judge flagged the repo rule — proving the per-repo policy was loaded, not the default
+    expect(result.findings[0]!.judgment?.breaksPolicy).toContain('no-unguarded-withdraw');
+  });
+
+  it('falls back to the default policy when the stored policy is invalid', async () => {
+    const repo = await seedRepo(handle.db);
+    await handle.db.update(schema.repositories)
+      .set({ policyJson: { version: 99, rules: 'not-an-array' } })
+      .where(eq(schema.repositories.id, repo.id));
+    const scan = await createScan(handle.db, { repositoryId: repo.id, trigger: 'push', commitSha: 'policy2' });
+    const result = await runScan(deps(fakeClientFor('@redline-sim exploitable=true netWei=5000000000000000000 cheatDependent=false flaky=false')), scan.id);
+    // an invalid stored policy must not crash the scan or flag anything
+    expect(result.redCount).toBe(1);
+    expect(result.findings[0]!.judgment?.breaksPolicy).toEqual([]);
   });
 
   it('stores the candidate attack encrypted at rest but recoverable', async () => {

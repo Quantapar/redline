@@ -24,7 +24,8 @@ stays locked until you prove you control the contract):
 
 1. **Install** the GitHub App and pick your repos. It finds your contracts and test setup.
 2. **First scan** probes the whole codebase once and shows a starting report.
-3. **Every change** is probed incrementally — only what changed, plus connected code.
+3. **Every change** is probed incrementally — the contracts that changed in the push or PR.
+   (Expanding the blast radius to call-graph-connected code is a planned refinement.)
 4. **Referee council** re-runs each candidate as plain transactions on independent
    fresh forks. A finding is red only if the referees agree value moved.
 5. **Fix it** generates the smallest fix (a diff and an explanation) and saves the attack

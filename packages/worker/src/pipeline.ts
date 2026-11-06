@@ -1,8 +1,8 @@
 import {
-  BudgetGuard, WeaknessClass, type Policy, type Candidate, type Finding,
+  BudgetGuard, WeaknessClass, Policy, type Candidate, type Finding,
 } from '@redline/shared';
 import {
-  type Database, setScanStatus, getScan, insertCandidate, insertRefereeRuns,
+  type Database, setScanStatus, getScan, getRepository, insertCandidate, insertRefereeRuns,
   insertFinding, insertRegressionTest, listActiveRegressionTests, listRecipes, encrypt, decrypt, schema,
 } from '@redline/db';
 import { runCouncil, type RefereeEngine, type CouncilDispatch } from '@redline/engine';
@@ -84,7 +84,13 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   };
 
   await setStatus('preparing', { startedAt: new Date() });
-  const { targets, policy } = await deps.prepare(scan);
+  const { targets, policy: preparedPolicy } = await deps.prepare(scan);
+  // Apply the repository's own .redline/policy.yml (cached as policyJson) when it has
+  // a valid one; otherwise fall back to what prepare resolved. This is what makes the
+  // per-repo plain-English rules actually guide the hunt and the judge, not just the CLI.
+  const repo = await getRepository(db, scan.repositoryId);
+  const repoPolicy = repo?.policyJson ? Policy.safeParse(repo.policyJson) : null;
+  const policy = repoPolicy?.success ? repoPolicy.data : preparedPolicy;
   const sourceByContract = new Map(targets.map((t) => [t.contractName, t.source]));
   emit({ type: 'log', scanId, message: `prepared ${targets.length} target(s)`, at: now() });
 
