@@ -41,7 +41,7 @@ export function FixItButton({ findingId }: { findingId: string }) {
         Fix it
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Proposed fix</DialogTitle>
             <DialogDescription>
@@ -56,14 +56,14 @@ export function FixItButton({ findingId }: { findingId: string }) {
           ) : error ? (
             <div className="rounded-lg border border-border bg-muted/40 p-4 text-[13px] text-muted-foreground">{error}</div>
           ) : fix ? (
-            <div className="log-line-in space-y-3">
+            <div className="log-line-in min-w-0 space-y-3">
               <p className="text-[13px] leading-relaxed text-foreground">{fix.explanation}</p>
               {fix.diff && fix.diff !== '(no diff returned)' ? (
                 <CodeBlock code={fix.diff} language="ts" filename={`${fix.branch}.diff`} />
               ) : null}
               <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground">
                 <Icon icon={CheckmarkCircle02Icon} size={14} className="text-[var(--success)]" />
-                Opens on branch <span className="font-mono">{fix.branch}</span> with the attack saved as a permanent test.
+                Suggested branch <span className="font-mono">{fix.branch}</span>. The attack is already saved as a forever-test.
               </div>
             </div>
           ) : null}

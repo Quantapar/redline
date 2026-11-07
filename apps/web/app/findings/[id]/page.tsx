@@ -77,7 +77,7 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
         <aside className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-4">
             <FixItButton findingId={finding.id} />
-            <p className="mt-2.5 text-center text-[11px] text-muted-foreground">Opens a reviewed PR with the fix and the forever-test.</p>
+            <p className="mt-2.5 text-center text-[11px] text-muted-foreground">Drafts the smallest fix as a diff for you to review.</p>
             <div className="mt-2 border-t border-border pt-2">
               <PublicProofButton findingId={finding.id} />
             </div>
