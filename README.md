@@ -63,7 +63,9 @@ We say "survived these attacks, at this time."
   ENS deploy-lock and a Safe multisig guard are the planned extension, not yet wired.
 - **Watch mode** — a new hack appears, becomes a recipe, and re-tests every repo.
 - **Security policy** — plain-English rules in `.redline/policy.yml`, managed with `redline policy`.
-- **Recipe library** — a shared, public library of attack patterns the swarm pulls on every scan.
+- **Recipe library on Arkiv** — a shared, public library of attack patterns, stored as queryable
+  entities on the [Arkiv](https://arkiv.network) testnet. The swarm reads it on every scan, watch
+  mode publishes to it, and every reproduced theft publishes its public proof there too (see below).
 - **Encryption at rest** — saved attacks are AES-256-GCM encrypted with a customer-held key.
 - **Ownership gate** — the finding is public; the runnable attack is redacted until you prove you
   control the contract.
@@ -78,10 +80,46 @@ We say "survived these attacks, at this time."
 | `packages/hunters` | Model-agnostic swarm orchestration (OpenAI-compatible router client) |
 | `packages/worker` | BullMQ job processors (scan pipeline) |
 | `packages/gates` | Going-live deploy lock and Safe guard decisions |
+| `packages/arkiv` | The public recipe library and public proofs on Arkiv (schemas, writes, reads) |
 | `packages/cli` | `redline policy` and `redline scan` for local use |
 | `apps/github-app` | Probot GitHub App: webhooks and checks |
 | `apps/web` | Next.js dashboard, live scan room, finding and going-live pages |
 | `apps/mcp-server` | MCP connector: your own AI tool pulls a finding and writes the fix |
+
+## Arkiv: the public library and the public proofs
+
+Two of Redline's collections are public by design and live on the Arkiv testnet (**Rabdi**,
+chain id 7794095) rather than only in our Postgres:
+
+- `redline.recipes`: the attack-recipe library. The worker reads it at the start of every scan
+  (`packages/worker/src/pipeline.ts`, `loadRecipes`) and the `/recipes` page renders from it.
+  Watch mode publishes each new recipe (`packages/worker/src/watch-mode.ts`).
+- `redline.proofs`: the referee council's proof of every reproduced theft, votes and balance
+  receipts only, never the attack (`publishFindingProof` in `packages/worker/src/public-proof.ts`).
+  The finding page and `GET /api/findings/:id/proof` link to the entity.
+
+Writer wallet (the only address that has written these schemas so far):
+`0x782d335aBbbd265841B5f33cDa528ACA9a4F94ea` on Rabdi.
+
+A query anyone can run against the public RPC, no key needed:
+
+```ts
+import { createPublicClient } from '@arkiv-network/sdk'
+import { rabdi } from '@arkiv-network/sdk/chains'
+import { eq } from '@arkiv-network/sdk/query'
+import { http } from 'viem'
+
+const client = createPublicClient({ chain: rabdi({ accessKey: '' }), transport: http() })
+const { entities } = await client.select().where(eq('arkiv.schema', 'redline.recipes')).fetch()
+```
+
+Set `ARKIV_PRIVATE_KEY` (a funded Rabdi wallet) to write, `ARKIV_READ=1` or `ARKIV_ACCESS_KEY` for a
+read-only deployment, and `pnpm arkiv:publish` to (re)publish the local library and every red
+finding's proof. Schema, judging notes and integration friction are in [`arkiv/`](arkiv/).
+
+AI-tool disclosure: this project was built with AI coding assistance (Claude) directing the
+implementation under the author's review; the referees' verdicts in the product are measured
+forge runs, not model opinions.
 
 ## Local development
 

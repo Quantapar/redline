@@ -7,8 +7,10 @@ import {
 } from '@redline/db';
 import { runCouncil, prepareRefereeProject, type RefereeEngine, type CouncilDispatch } from '@redline/engine';
 import { huntSwarm, type RouterClient, type HuntTarget } from '@redline/hunters';
+import { arkivReadEnabled, listRecipes as listArkivRecipes } from '@redline/arkiv';
 import { judge } from './judge.js';
 import { noopEmit, type EmitFn } from './events.js';
+import { publishFindingProof, withTimeout } from './public-proof.js';
 
 export interface PrepareResult {
   targets: HuntTarget[];
@@ -126,7 +128,10 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
     });
     return result.isRed;
   };
-  const recipes = (await listRecipes(db)).map((r) => ({ weaknessClass: r.weaknessClass, title: r.title, template: r.template }));
+  // The recipe library is read from Arkiv, the public database it is published to, so
+  // every scan hunts with the latest recipes anyone has published. Postgres is the
+  // fallback when Arkiv is off or unreachable.
+  const recipes = await loadRecipes(db, (m) => emit({ type: 'log', scanId, message: m, at: now() }));
   candidates = await huntSwarm({
     client: deps.client,
     scanId,
@@ -238,6 +243,14 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
 
     if (isRed) {
       redCount += 1;
+      // Publish the council's proof (votes and receipts, never the attack) to Arkiv,
+      // where anyone can query it. Best-effort: a failed publish never fails the scan.
+      try {
+        const ref = await publishFindingProof(db, findingRow.id);
+        if (ref) emit({ type: 'log', scanId, message: `public proof published to Arkiv: ${ref.explorerUrl}`, at: now() });
+      } catch (err) {
+        emit({ type: 'log', scanId, message: `arkiv publish skipped: ${String(err).slice(0, 120)}`, at: now() });
+      }
       priorKeys.add(`${c.weaknessClass}:${c.targetContract}:${c.targetFunction ?? ''}`);
       // Save the attack as a forever-test — but only on first discovery, never when a
       // forever-test re-reproduces (it is already saved), so they don't accumulate.
@@ -293,4 +306,21 @@ export async function runScan(deps: PipelineDeps, scanId: string): Promise<ScanR
   emit({ type: 'done', scanId, redCount, at: now() });
 
   return { scanId, candidateCount: candidates.length, findings, redCount };
+}
+
+type RecipeHint = { weaknessClass: string; title: string; template: string };
+
+async function loadRecipes(db: Database, log: (m: string) => void): Promise<RecipeHint[]> {
+  if (arkivReadEnabled()) {
+    try {
+      const rows = await withTimeout(listArkivRecipes(), 6000);
+      if (rows.length) {
+        log(`loaded ${rows.length} recipe(s) from the Arkiv library`);
+        return rows.map((r) => ({ weaknessClass: r.weaknessClass, title: r.title, template: r.template }));
+      }
+    } catch (err) {
+      log(`arkiv library unreachable, using the local copy: ${String(err).slice(0, 100)}`);
+    }
+  }
+  return (await listRecipes(db)).map((r) => ({ weaknessClass: r.weaknessClass, title: r.title, template: r.template }));
 }

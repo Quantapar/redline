@@ -9,6 +9,7 @@ export default defineConfig({
       '@redline/db': a('../db/src/index.ts'),
       '@redline/engine': a('../engine/src/index.ts'),
       '@redline/hunters': a('../hunters/src/index.ts'),
+      '@redline/arkiv': a('../arkiv/src/index.ts'),
     },
   },
 });

@@ -1,4 +1,5 @@
 import { createScan, insertRecipe, schema, desc, eq, type Database } from '@redline/db';
+import { arkivWriteConfigured, publishRecipe, type ArkivRef } from '@redline/arkiv';
 
 export interface WatchRecipe {
   weaknessClass: string;
@@ -22,7 +23,7 @@ export async function triggerWatchMode(
     /** called when one repo fails to queue; the rollout continues regardless */
     onError?: (repositoryId: string, err: unknown) => void;
   },
-): Promise<{ recipeId: string; scansQueued: number; failed: number }> {
+): Promise<{ recipeId: string; scansQueued: number; failed: number; arkiv: ArkivRef | null }> {
   const recipe = await insertRecipe(db, {
     weaknessClass: opts.recipe.weaknessClass,
     chain: opts.recipe.chain,
@@ -32,6 +33,26 @@ export async function triggerWatchMode(
     template: opts.recipe.template,
     source: 'watch-mode',
   });
+
+  // The new recipe goes to the public library on Arkiv, where every scan (ours and
+  // anyone else's) reads it. Best-effort: Postgres keeps the local copy either way.
+  let arkiv: ArkivRef | null = null;
+  if (arkivWriteConfigured()) {
+    try {
+      arkiv = await publishRecipe({
+        id: recipe.id,
+        weaknessClass: recipe.weaknessClass,
+        chain: recipe.chain,
+        severity: recipe.severity,
+        labels: (recipe.labels as string[]) ?? [],
+        title: recipe.title,
+        template: recipe.template,
+        source: 'watch-mode',
+      });
+    } catch (err) {
+      opts.onError?.('arkiv', err);
+    }
+  }
 
   const repos = await db.select().from(schema.repositories).where(eq(schema.repositories.enabled, true));
   let queued = 0;
@@ -61,5 +82,5 @@ export async function triggerWatchMode(
       opts.onError?.(repo.id, err);
     }
   }
-  return { recipeId: recipe.id, scansQueued: queued, failed };
+  return { recipeId: recipe.id, scansQueued: queued, failed, arkiv };
 }

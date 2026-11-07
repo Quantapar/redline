@@ -22,7 +22,8 @@
       "@redline/db": ["packages/db/src/index.ts"],
       "@redline/engine": ["packages/engine/src/index.ts"],
       "@redline/hunters": ["packages/hunters/src/index.ts"],
-      "@redline/worker": ["packages/worker/src/index.ts"]
+      "@redline/worker": ["packages/worker/src/index.ts"],
+      "@redline/arkiv": ["packages/arkiv/src/index.ts"]
     }
   }
 }

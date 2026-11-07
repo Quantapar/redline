@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   ...(process.env.NEXT_DISTDIR ? { distDir: process.env.NEXT_DISTDIR } : {}),
-  transpilePackages: ['@redline/db', '@redline/shared', '@redline/hunters', '@redline/engine', '@redline/worker', '@redline/gates'],
+  transpilePackages: ['@redline/db', '@redline/shared', '@redline/hunters', '@redline/engine', '@redline/worker', '@redline/gates', '@redline/arkiv'],
   eslint: { ignoreDuringBuilds: true },
   experimental: {
     // @hugeicons/core-free-icons' entry re-exports ~6,000 icon modules. Without

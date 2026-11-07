@@ -193,9 +193,50 @@ export async function getDeployGates() {
   return out;
 }
 
-export async function getRecipes() {
+export type RecipeView = {
+  id: string;
+  weaknessClass: string;
+  chain: string;
+  severity: string;
+  labels: string[];
+  title: string;
+  template: string;
+  source: string;
+  /** set when the recipe was read from Arkiv */
+  entityKey?: string;
+  explorerUrl?: string;
+  owner?: string;
+};
+
+export async function getRecipes(): Promise<{ recipes: RecipeView[]; source: 'arkiv' | 'local'; writer: string | null }> {
   // The recipe library is a public catalogue of attack templates; it holds no
-  // private repository code and is intentionally visible to every viewer.
+  // private repository code and is intentionally visible to every viewer. It is
+  // read from Arkiv, the public database it is published to; Postgres is the
+  // fallback when Arkiv is off or unreachable.
+  const { arkivReadEnabled, listRecipes: listArkiv, writerAddress } = await import('@redline/arkiv');
+  const { withTimeout } = await import('@redline/worker');
+  if (arkivReadEnabled()) {
+    try {
+      const rows = await withTimeout(listArkiv(), 5000);
+      if (rows.length) {
+        return {
+          source: 'arkiv',
+          writer: writerAddress(),
+          recipes: rows.map((r) => ({ ...r, labels: r.labels as string[] })),
+        };
+      }
+    } catch {
+      /* fall through to the local copy */
+    }
+  }
   const { listRecipes } = await import('@redline/db');
-  return listRecipes(db());
+  const local = await listRecipes(db());
+  return {
+    source: 'local',
+    writer: null,
+    recipes: local.map((r) => ({
+      id: r.id, weaknessClass: r.weaknessClass, chain: r.chain, severity: r.severity,
+      labels: (r.labels as string[]) ?? [], title: r.title, template: r.template, source: r.source,
+    })),
+  };
 }

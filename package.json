@@ -21,7 +21,8 @@
     "verify": "pnpm -r typecheck && pnpm -r --workspace-concurrency=1 test",
     "start": "pnpm --filter @redline/web dev",
     "worker": "pnpm --filter @redline/worker start",
-    "smoke": "tsx scripts/smoke.mts"
+    "smoke": "tsx scripts/smoke.mts",
+    "arkiv:publish": "tsx scripts/arkiv-publish.mts"
   },
   "devDependencies": {
     "turbo": "2.3.3",

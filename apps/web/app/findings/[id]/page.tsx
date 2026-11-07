@@ -17,6 +17,8 @@ import {
   WEAKNESS_LABEL, SEVERITY_HUE, CONSENSUS_LABEL, shortSha, formatEth,
 } from '@/lib/format';
 import { netMovedWei } from '@/lib/referee-value';
+import { findingProofOnArkiv } from '@redline/worker';
+import { Database01Icon } from '@hugeicons/core-free-icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +31,7 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
   const movedRun = runs.find((r) => r.outcome === 'moved');
   const redacted = candidate?.forgeTest ? redactAttack(candidate.forgeTest) : null;
   const atRisk = movedRun ? netMovedWei(movedRun.deltas) : candidate?.claimedValueWei ?? '0';
+  const arkivProof = await findingProofOnArkiv(finding.id);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -80,6 +83,11 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
             <p className="mt-2.5 text-center text-[11px] text-muted-foreground">Drafts the smallest fix as a diff for you to review.</p>
             <div className="mt-2 border-t border-border pt-2">
               <PublicProofButton findingId={finding.id} />
+              {arkivProof ? (
+                <a href={arkivProof.explorerUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] text-muted-foreground hover:bg-muted hover:text-foreground">
+                  <Icon icon={Database01Icon} size={13} /> Published on Arkiv <span className="font-mono text-[11px]">{arkivProof.entityKey.slice(0, 10)}…</span>
+                </a>
+              ) : null}
             </div>
           </div>
 
