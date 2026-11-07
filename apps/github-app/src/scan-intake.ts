@@ -71,6 +71,8 @@ export interface VerdictSummary {
   red: VerdictFinding[];
   inconclusive: VerdictFinding[];
   fragile: VerdictFinding[];
+  /** attacks the referees replayed and agreed moved no money */
+  held: VerdictFinding[];
   /** candidates that never produced a finding (their verification errored) */
   unchecked: number;
   cancelled: boolean;
@@ -88,6 +90,7 @@ export function summarizeScan(findings: VerdictFinding[], facts: ScanFacts = {})
   const red = findings.filter((f) => f.isRed);
   const inconclusive = findings.filter((f) => !f.isRed && f.consensus === 'inconclusive');
   const fragile = findings.filter((f) => !f.isRed && f.consensus === 'fragile');
+  const held = findings.filter((f) => !f.isRed && f.consensus === 'not-reproduced');
   const candidateCount = facts.candidateCount ?? findings.length;
   const unchecked = Math.max(0, candidateCount - findings.length);
   const status = facts.status ?? 'complete';
@@ -96,7 +99,7 @@ export function summarizeScan(findings: VerdictFinding[], facts: ScanFacts = {})
   const verdict: Verdict = red.length > 0
     ? 'red'
     : inconclusive.length || fragile.length || unchecked || incomplete ? 'unverified' : 'clean';
-  return { verdict, red, inconclusive, fragile, unchecked, cancelled, incomplete, candidateCount };
+  return { verdict, red, inconclusive, fragile, held, unchecked, cancelled, incomplete, candidateCount };
 }
 
 export function scanVerdict(findings: VerdictFinding[], facts?: ScanFacts): Verdict {
@@ -140,6 +143,23 @@ export function inert(text: string, max = MAX_FIELD): string {
  * fail the check so the change cannot merge. A scan without a full referee
  * verdict is neutral (neither blocks nor clears); only a real verdict passes.
  */
+/** A forever-test replay is stored with a "Regression:" title (see the worker pipeline). */
+function isForeverTest(f: VerdictFinding): boolean {
+  return /^Regression:/.test(f.title);
+}
+
+/** One line for the check summary: what was replayed and did not move money. */
+function heldSentence(s: VerdictSummary): string {
+  if (!s.held.length) return '';
+  const saved = s.held.filter(isForeverTest).length;
+  const fresh = s.held.length - saved;
+  const parts = [
+    saved ? plural(saved, 'saved attack from a past finding (forever-test)', 'saved attacks from past findings (forever-tests)') : '',
+    fresh ? plural(fresh, 'new attack', 'new attacks') : '',
+  ].filter(Boolean).join(' and ');
+  return `\n\nReplayed with no money moved: ${parts}.`;
+}
+
 export function buildCheckOutput(findings: VerdictFinding[], appUrl: string, facts?: ScanFacts): CheckOutput {
   const s = summarizeScan(findings, facts);
   if (s.verdict === 'unverified') {
@@ -147,7 +167,7 @@ export function buildCheckOutput(findings: VerdictFinding[], appUrl: string, fac
     return {
       conclusion: 'neutral',
       title: 'No verdict: Redline could not prove this change either way',
-      summary: `This is not a pass. ${reasons.charAt(0).toUpperCase()}${reasons.slice(1)}. The change is neither blocked nor cleared.`,
+      summary: `This is not a pass. ${reasons.charAt(0).toUpperCase()}${reasons.slice(1)}. The change is neither blocked nor cleared.${heldSentence(s)}`,
     };
   }
   if (s.verdict === 'clean') {
@@ -156,7 +176,7 @@ export function buildCheckOutput(findings: VerdictFinding[], appUrl: string, fac
       title: 'No theft could be reproduced',
       summary: s.candidateCount === 0
         ? "Redline's hunters found no plausible attack on the changed contracts."
-        : `Redline attacked the change and nothing paid out. ${plural(s.candidateCount, 'candidate attack was', 'candidate attacks were')} tried; none reproduced.`,
+        : `Redline attacked the change and nothing paid out. ${plural(s.candidateCount, 'candidate attack was', 'candidate attacks were')} tried; none reproduced.${heldSentence(s)}`,
     };
   }
   const lines = s.red
@@ -189,6 +209,26 @@ function footer(ctx: CommentContext): string {
 
 function moreRows(total: number): string[] {
   return total > MAX_ROWS ? [`| …and ${total - MAX_ROWS} more | | | |`] : [];
+}
+
+/**
+ * The attacks that were replayed and did not move money, saved forever-tests
+ * first: on a fix, "the attack that drained it before no longer works" is the
+ * fact the reviewer needs, even when another attack keeps the verdict open.
+ */
+function heldRows(s: VerdictSummary): string[] {
+  if (!s.held.length) return [];
+  const held = [...s.held].sort((a, b) => Number(isForeverTest(b)) - Number(isForeverTest(a)));
+  return [
+    '',
+    '**Replayed, no money moved:**',
+    '',
+    '| Attack | Referees |',
+    '| --- | --- |',
+    ...held.slice(0, MAX_ROWS).map((f) =>
+      `| ${isForeverTest(f) ? `Saved attack from a past finding: ${inert(f.title.replace(/^Regression:\s*/, ''))} (forever-test)` : inert(f.title)} | 0/${f.refereeCount} saw money move |`),
+    ...(held.length > MAX_ROWS ? [`| …and ${held.length - MAX_ROWS} more | |`] : []),
+  ];
 }
 
 /** The comment posted the moment a scan is queued; edited in place when it ends. */
@@ -262,6 +302,7 @@ export function buildVerdictComment(
         ...(open.length > MAX_ROWS ? [`| …and ${open.length - MAX_ROWS} more | | |`] : []),
       );
     }
+    lines.push(...heldRows(s));
   } else {
     lines.push(
       '## 🟢 No theft could be reproduced',
@@ -269,6 +310,8 @@ export function buildVerdictComment(
       s.candidateCount === 0
         ? "Redline's hunters found no plausible attack on the changed contracts."
         : `Redline attacked the change and nothing paid out. ${plural(s.candidateCount, 'candidate attack was', 'candidate attacks were')} tried, and the referees agreed none of them moved money.`,
+      '',
+      ...heldRows(s),
       '',
       '<sub>This means the change survived these attacks, at this time. It is not a guarantee the code is bug-free.</sub>',
     );

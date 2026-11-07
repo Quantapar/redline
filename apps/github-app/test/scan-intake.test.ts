@@ -216,3 +216,23 @@ describe('inert() — model / PR-author text cannot inject into the comment', ()
     expect(body).toMatch(/…and 180 more/);
   });
 });
+
+describe('replayed attacks that moved no money', () => {
+  const regression = { ...finding(false, 'r1'), title: 'Regression: reentrancy in CommunityVault' };
+  it('names the saved forever-test in an open verdict, first', () => {
+    const body = buildVerdictComment([unverified('u1'), finding(false, 'k1'), regression], { appUrl: 'https://app.test', scanId: 's', commitSha: 'abcdef1234' });
+    expect(body).toMatch(/No verdict/);
+    expect(body).toContain('**Replayed, no money moved:**');
+    const saved = body.indexOf('Saved attack from a past finding: reentrancy in CommunityVault (forever-test) | 0/3 saw money move');
+    expect(saved).toBeGreaterThan(-1);
+    expect(saved).toBeLessThan(body.indexOf('| Reentrancy in Vault | 0/3 saw money move'));
+  });
+  it('says so in the check summary', () => {
+    const out = buildCheckOutput([unverified('u1'), finding(false, 'k1'), regression], 'https://app.test');
+    expect(out.conclusion).toBe('neutral');
+    expect(out.summary).toContain('Replayed with no money moved: 1 saved attack from a past finding (forever-test) and 1 new attack.');
+  });
+  it('adds nothing when no attack was replayed', () => {
+    expect(buildCheckOutput([unverified('u1')], 'https://app.test').summary).not.toContain('Replayed with no money moved');
+  });
+});

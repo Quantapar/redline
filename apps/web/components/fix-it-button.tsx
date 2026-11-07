@@ -61,9 +61,11 @@ export function FixItButton({ findingId }: { findingId: string }) {
               {fix.diff && fix.diff !== '(no diff returned)' ? (
                 <CodeBlock code={fix.diff} language="ts" filename={`${fix.branch}.diff`} />
               ) : null}
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground">
-                <Icon icon={CheckmarkCircle02Icon} size={14} className="text-[var(--success)]" />
-                Suggested branch <span className="font-mono">{fix.branch}</span>. The attack is already saved as a forever-test.
+              <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground">
+                <Icon icon={CheckmarkCircle02Icon} size={14} className="mt-px shrink-0 text-[var(--success)]" />
+                <p>
+                  Suggested branch <span className="font-mono">{fix.branch}</span>. The attack is already saved as a forever-test.
+                </p>
               </div>
             </div>
           ) : null}
