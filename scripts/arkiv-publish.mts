@@ -36,7 +36,18 @@ for (const r of recipes) {
   console.log(`recipe  ${r.weaknessClass.padEnd(18)} ${ref.entityKey} ${ref.txHash !== '0x' ? 'created' : 'exists'}`);
 }
 
-const red = await db.select({ id: schema.findings.id }).from(schema.findings).where(eq(schema.findings.isRed, true));
+// Only proofs from real installations go on chain. scripts/seed-demo.mts inserts demo
+// findings under the made-up installation 90210; they were never measured by real
+// referees, so publishing them as council proofs would be a false public record.
+const SEEDED_DEMO_INSTALLATION = 90210;
+const red = (await db
+  .select({ id: schema.findings.id, installation: schema.installations.githubInstallationId })
+  .from(schema.findings)
+  .innerJoin(schema.scans, eq(schema.scans.id, schema.findings.scanId))
+  .innerJoin(schema.repositories, eq(schema.repositories.id, schema.scans.repositoryId))
+  .innerJoin(schema.installations, eq(schema.installations.id, schema.repositories.installationId))
+  .where(eq(schema.findings.isRed, true)))
+  .filter((f) => Number(f.installation) !== SEEDED_DEMO_INSTALLATION);
 for (const f of red) {
   const ref = await publishFindingProof(db, f.id);
   if (ref) console.log(`proof   ${f.id} ${ref.entityKey} ${ref.txHash !== '0x' ? 'created' : 'exists'}`);
