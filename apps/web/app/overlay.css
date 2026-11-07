@@ -1,15 +1,16 @@
-/* Overlay: a warm-dark workspace dashboard. One frame, a sidebar on the frame
+/* Overlay: the dark workspace dashboard, on the same neutral palette, brand red
+   and Geist type as the onboarding flow. One frame, a sidebar on the frame
    itself, and a lighter main panel nested inside it (radius = frame − gap).
    Depth comes from 1px white rings, not borders; text steps down in four greys. */
 
 .ov-stage {
-  --ov-bg: #0c0b0a;
-  --ov-frame: #1a1918;
-  --ov-panel: #1f1e1c;
-  --ov-panel-glow: #2a2825;
-  --ov-well: #0f0e0d;
-  --ov-raised: #2b2a27;
-  --ov-raised-hover: #33312e;
+  --ov-bg: #0a0a0a;
+  --ov-frame: #0f0f0f;
+  --ov-panel: #141414;
+  --ov-panel-glow: #202020;
+  --ov-well: #0c0c0c;
+  --ov-raised: #222222;
+  --ov-raised-hover: #2a2a2a;
   --ov-fill: rgb(255 255 255 / 0.025);
   /* Rows: hover is a faint wash, the selected row a clearly stronger one; they never look alike. */
   --ov-hover: rgb(255 255 255 / 0.04);
@@ -17,14 +18,14 @@
   --ov-line: rgb(255 255 255 / 0.06);
   --ov-ring: 0 0 0 1px rgb(255 255 255 / 0.06);
   --ov-ring-strong: 0 0 0 1px rgb(255 255 255 / 0.1);
-  --ov-text: #f1eee9;
+  --ov-text: #f2f2f2;
   /* Every text grey clears 4.5:1 on the panel and on cards (text-4 sits at 4.6:1 on cards). */
-  --ov-text-2: #c0bcb5;
-  --ov-text-3: #9e9a93;
-  --ov-text-4: #8f8b84;
-  --ov-hairline-dim: #4f4b46;
-  --ov-light: #ece8e2;
-  --ov-accent: oklch(0.74 0.13 52);
+  --ov-text-2: #b8b8b8;
+  --ov-text-3: #999999;
+  --ov-text-4: #8a8a8a;
+  --ov-hairline-dim: #484848;
+  --ov-light: #ebebeb;
+  --ov-accent: oklch(0.62 0.23 27);
   /* Arriving and leaving: strong ease-out. Already on screen and moving: strong ease-in-out. */
   --ov-ease: cubic-bezier(0.23, 1, 0.32, 1);
   --ov-ease-move: cubic-bezier(0.77, 0, 0.175, 1);
@@ -36,7 +37,7 @@
   padding: 40px 24px;
   background: var(--ov-bg);
   color: var(--ov-text);
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
@@ -206,13 +207,13 @@
 .ov-logo > span:nth-child(1) {
   top: 8px;
   left: 0;
-  background: #4a4743;
+  background: #444444;
 }
 
 .ov-logo > span:nth-child(2) {
   top: 4px;
   left: 4px;
-  background: #6f6b66;
+  background: #6b6b6b;
 }
 
 .ov-logo > span:nth-child(3) {
@@ -230,7 +231,7 @@
   right: 0;
   padding: 6px;
   border-radius: 14px;
-  background: #242320;
+  background: #1a1a1a;
   box-shadow:
     var(--ov-ring-strong),
     0 16px 40px -8px rgb(0 0 0 / 0.6);
@@ -346,7 +347,7 @@
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: #262422;
+  background: #1c1c1c;
   /* The same 1px top light as the selected filter pill, following the key's corners. */
   box-shadow:
     var(--ov-ring),
@@ -703,7 +704,7 @@
 .ov-button--primary {
   background: var(--ov-light);
   box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.12);
-  color: #1a1918;
+  color: #0f0f0f;
 }
 
 /* A small filter field, the in-page sibling of the sidebar search. */
@@ -926,7 +927,7 @@
   flex: none;
   place-items: center;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px #57534d;
+  box-shadow: inset 0 0 0 1.5px #525252;
   transition:
     box-shadow 150ms ease,
     transform 150ms ease-out;
@@ -956,7 +957,7 @@ button.ov-check:active {
 
 .ov-check path {
   fill: none;
-  stroke: #1a1918;
+  stroke: #0f0f0f;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
   stroke-linecap: round;
@@ -1650,7 +1651,7 @@ button.ov-check:active {
   z-index: 3;
   top: 0;
   height: 56px;
-  background: #222120;
+  background: #191919;
   box-shadow: 0 1px 0 var(--ov-line);
 }
 
@@ -1683,7 +1684,7 @@ button.ov-check:active {
 
 .ov-cal__day[data-today] strong {
   background: var(--ov-light);
-  color: #1a1918;
+  color: #0f0f0f;
 }
 
 .ov-cal__hours {
@@ -2230,7 +2231,7 @@ button.ov-check:active {
     height: 16px;
     padding: 0 4px;
     background: var(--ov-light);
-    color: #1a1918;
+    color: #0f0f0f;
     font-size: 10.5px;
     font-weight: 600;
     line-height: 16px;
@@ -2298,43 +2299,43 @@ button.ov-check:active {
    .ov-* so it never collides with Tailwind/Kobra.
    ========================================================================= */
 
-/* Warm-dark palette for the Kobra/Tailwind tokens, so cards, inputs, dialogs,
+/* Neutral-dark palette (matching the onboarding) for the Kobra/Tailwind tokens, so cards, inputs, dialogs,
    popovers and badges that are NOT .ov-* still sit in the same world. */
 :root.dark,
 .dark {
-  --background: #0c0b0a;
-  --foreground: #f1eee9;
-  --card: #1f1e1c;
-  --card-foreground: #f1eee9;
-  --popover: #242320;
-  --popover-foreground: #f1eee9;
-  --primary: #ece8e2;
-  --primary-foreground: #1a1918;
-  --secondary: #26241f;
-  --secondary-foreground: #f1eee9;
-  --muted: #26241f;
-  --muted-foreground: #9e9a93;
-  --accent: #33312e;
-  --accent-foreground: #f1eee9;
+  --background: #0a0a0a;
+  --foreground: #f2f2f2;
+  --card: #141414;
+  --card-foreground: #f2f2f2;
+  --popover: #1a1a1a;
+  --popover-foreground: #f2f2f2;
+  --primary: #ebebeb;
+  --primary-foreground: #0f0f0f;
+  --secondary: #1e1e1e;
+  --secondary-foreground: #f2f2f2;
+  --muted: #1e1e1e;
+  --muted-foreground: #999999;
+  --accent: #2a2a2a;
+  --accent-foreground: #f2f2f2;
   --border: rgb(255 255 255 / 0.08);
   --input: rgb(255 255 255 / 0.12);
   --ring: rgb(255 255 255 / 0.4);
-  --brand: oklch(0.74 0.13 52);
-  --sidebar: #1a1918;
-  --sidebar-foreground: #f1eee9;
-  --sidebar-accent: #2b2a27;
-  --sidebar-accent-foreground: #f1eee9;
+  --brand: oklch(0.62 0.23 27);
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #f2f2f2;
+  --sidebar-accent: #222222;
+  --sidebar-accent-foreground: #f2f2f2;
   --sidebar-border: rgb(255 255 255 / 0.08);
-  --shell-canvas: #0c0b0a;
-  --shell-line-strong: #33312e;
+  --shell-canvas: #0a0a0a;
+  --shell-line-strong: #2a2a2a;
   --skeleton-sweep: rgb(255 255 255 / 6%);
   --check-ring-color: rgb(255 255 255 / 0.14);
-  --check-arc-color: #9e9a93;
+  --check-arc-color: #999999;
 }
 
 html,
 body {
-  background: var(--ov-bg, #0c0b0a);
+  background: var(--ov-bg, #0a0a0a);
 }
 
 /* The stage is no longer a centered demo; it is the page. */
@@ -2392,15 +2393,7 @@ body > .ov-stage,
   letter-spacing: -0.025em;
 }
 .ov-wordmark__mark {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
   flex: none;
-  border-radius: 8px;
-  background: var(--ov-accent);
-  color: #1a1109;
-  box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.15), inset 0 1px 0 rgb(255 255 255 / 0.2);
 }
 
 /* Mobile: the fixed sidebar folds away behind a top bar + sheet. */
@@ -2483,8 +2476,8 @@ a.ov-nav__item {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(80% 55% at 50% 0%, #1a1714, transparent 70%),
-    var(--ov-bg, #0c0b0a);
+    radial-gradient(80% 55% at 50% 0%, #151515, transparent 70%),
+    var(--ov-bg, #0a0a0a);
 }
 .login-card {
   width: 100%;
@@ -2505,8 +2498,8 @@ a.ov-nav__item {
   background: var(--ov-fill, rgb(255 255 255 / 0.04));
   box-shadow: var(--ov-ring, 0 0 0 1px rgb(255 255 255 / 0.06));
 }
-.login-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--ov-text, #f1eee9); }
-.login-sub { color: var(--ov-text-3, #9e9a93); font-size: 13.5px; line-height: 1.5; margin-bottom: 10px; text-wrap: pretty; }
+.login-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--ov-text, #f2f2f2); }
+.login-sub { color: var(--ov-text-3, #999999); font-size: 13.5px; line-height: 1.5; margin-bottom: 10px; text-wrap: pretty; }
 .login-provider {
   display: inline-flex;
   width: 100%;
@@ -2521,15 +2514,15 @@ a.ov-nav__item {
   transition: background-color 150ms ease, transform 120ms ease;
 }
 .login-provider:active { transform: scale(0.985); }
-.login-provider--github { background: var(--ov-light, #ece8e2); color: #1a1918; box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.15); }
+.login-provider--github { background: var(--ov-light, #ebebeb); color: #0f0f0f; box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.15); }
 .login-provider--github:hover { background: #fff; }
 .login-provider--google {
-  background: var(--ov-raised, #2b2a27);
-  color: var(--ov-text, #f1eee9);
+  background: var(--ov-raised, #222222);
+  color: var(--ov-text, #f2f2f2);
   box-shadow: var(--ov-ring, 0 0 0 1px rgb(255 255 255 / 0.06)), inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
-.login-provider--google:hover { background: var(--ov-raised-hover, #33312e); }
-.login-fineprint { margin-top: 8px; color: var(--ov-text-4, #8f8b84); font-size: 11.5px; line-height: 1.5; }
+.login-provider--google:hover { background: var(--ov-raised-hover, #2a2a2a); }
+.login-fineprint { margin-top: 8px; color: var(--ov-text-4, #8a8a8a); font-size: 11.5px; line-height: 1.5; }
 
 /* ——— Auth: user box in the sidebar ——— */
 a.ov-me--link {
@@ -2547,7 +2540,7 @@ a.ov-me--link {
   flex: none;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 1.5px var(--ov-panel, #1f1e1c);
+  box-shadow: 0 0 0 1.5px var(--ov-panel, #141414);
 }
 .ov-me__role {
   overflow: hidden;
@@ -2557,13 +2550,13 @@ a.ov-me--link {
 
 /* ——— Auth: profile page ——— */
 .profile-id { display: flex; align-items: center; gap: 16px; padding: 18px 20px; }
-.profile-id__avatar { width: 56px; height: 56px; flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 1.5px var(--ov-panel, #1f1e1c); }
+.profile-id__avatar { width: 56px; height: 56px; flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 1.5px var(--ov-panel, #141414); }
 .profile-id__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .profile-id__name { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
-.profile-id__email { color: var(--ov-text-3, #9e9a93); font-size: 13px; }
+.profile-id__email { color: var(--ov-text-3, #999999); font-size: 13px; }
 a.profile-connect { display: flex; align-items: center; gap: 14px; padding: 16px 18px; text-decoration: none; color: inherit; transition: background-color 150ms ease; }
 @media (hover: hover) and (pointer: fine) { a.profile-connect:hover { background: var(--ov-hover, rgb(255 255 255 / 0.04)); } }
-.profile-connect__icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 11px; background: var(--ov-fill, rgb(255 255 255 / 0.04)); box-shadow: var(--ov-ring, 0 0 0 1px rgb(255 255 255 / 0.06)); color: var(--ov-text-2, #c0bcb5); }
+.profile-connect__icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 11px; background: var(--ov-fill, rgb(255 255 255 / 0.04)); box-shadow: var(--ov-ring, 0 0 0 1px rgb(255 255 255 / 0.06)); color: var(--ov-text-2, #b8b8b8); }
 .profile-connect__text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .profile-connect__title { font-size: 14px; font-weight: 600; }
-.profile-connect__sub { color: var(--ov-text-3, #9e9a93); font-size: 12.5px; }
+.profile-connect__sub { color: var(--ov-text-3, #999999); font-size: 12.5px; }

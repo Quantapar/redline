@@ -25,9 +25,26 @@ async function openAlarmCount(): Promise<number> {
   }
 }
 
+const DESCRIPTION = 'Continuous security testing for smart contracts. An alarm only when the money provably moves.';
+
+// The icon, apple-icon and opengraph/twitter images come from the app/ file
+// conventions; metadataBase makes their URLs absolute for link previews.
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.REDLINE_PUBLIC_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || 'https://redline.quantapar.com'),
   title: 'Redline — proof, not opinion',
-  description: 'Continuous security testing for smart contracts. An alarm only when the money provably moves.',
+  description: DESCRIPTION,
+  applicationName: 'Redline',
+  openGraph: {
+    type: 'website',
+    siteName: 'Redline',
+    title: 'Redline — proof, not opinion',
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Redline — proof, not opinion',
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {

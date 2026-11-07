@@ -1,29 +1,13 @@
 import { cn } from "@/lib/flow/utils";
+import { RedlineMark } from "@/components/brand";
 
 /** Redline's mark + wordmark, used in the flow header. */
 export function ConcisionLogo({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2 text-ink", className)}>
-      <RedlineGlyph className="size-6" />
+      <RedlineMark size={24} />
       <span className="text-[18px] leading-none font-medium tracking-[-0.02em]">Redline</span>
     </span>
-  );
-}
-
-function RedlineGlyph({ className }: { className?: string }) {
-  // A single red line cutting across — the Redline brand mark.
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" stroke="var(--border)" />
-      <path
-        d="M5 15.5L10 10.5L13.5 14L19 8"
-        stroke="var(--brand)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="19" cy="8" r="1.6" fill="var(--brand)" />
-    </svg>
   );
 }
 

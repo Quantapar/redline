@@ -7,7 +7,7 @@ import { RedlineMark } from '@/components/brand';
 import { Icon } from '@/components/icon';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
-  DashboardSquare01Icon,
+  PlusSignIcon,
   Bug01Icon,
   FolderLibraryIcon,
   JusticeScale01Icon,
@@ -22,7 +22,8 @@ import {
 type NavItem = { href: string; label: string; icon: Parameters<typeof Icon>[0]['icon'] };
 
 const PRIMARY: NavItem[] = [
-  { href: '/', label: 'Overview', icon: DashboardSquare01Icon },
+  // Home is the onboarding: pick a repository and watch it get attacked
+  { href: '/', label: 'New attack', icon: PlusSignIcon },
   { href: '/repositories', label: 'Repositories', icon: FolderLibraryIcon },
   { href: '/findings', label: 'Findings', icon: Bug01Icon },
 ];
@@ -169,9 +170,7 @@ function ShellSearch() {
 function Brand() {
   return (
     <Link href="/" className="ov-wordmark" aria-label="Redline home">
-      <span className="ov-wordmark__mark">
-        <RedlineMark size={16} />
-      </span>
+      <RedlineMark size={26} className="ov-wordmark__mark" />
       <span className="ov-wordmark__name">Redline</span>
     </Link>
   );
